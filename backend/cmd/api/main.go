@@ -2,9 +2,12 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -16,5 +19,11 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	log.Println("Successfully connected to the database")
+	r := gin.Default()
+	r.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
+	r.Run(":" + cfg.SERVER_PORT)
+
+	log.Println("Server started on port " + cfg.SERVER_PORT)
 }
