@@ -7,6 +7,7 @@ import (
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/migration"
+	"smurl/internal/url"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,10 +21,18 @@ func main() {
 	}
 	defer dbConn.Close()
 
-     migration.Run(cfg)
+	migration.Run(cfg)
 
+	baseURL := "http://localhost:" + cfg.SERVER_PORT
+	urlRepo := url.NewRepository(dbConn)
+	urlService := url.NewService(urlRepo, baseURL)
+	urlHandler := url.NewHandler(urlService)
 
 	r := gin.Default()
+
+	// Register URL module routes
+	urlHandler.RegisterRoutes(r)
+
 	r.GET("/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
