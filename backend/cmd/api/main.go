@@ -6,6 +6,7 @@ import (
 
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
+	"smurl/internal/platform/migration"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,6 +19,9 @@ func main() {
 		log.Fatalf("Connection to DB failed: %v", err)
 	}
 	defer dbConn.Close()
+
+     migration.Run(cfg)
+
 
 	r := gin.Default()
 	r.GET("/health", func(c *gin.Context) {
