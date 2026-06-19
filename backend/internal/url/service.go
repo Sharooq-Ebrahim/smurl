@@ -13,6 +13,7 @@ var ErrNotFound = errors.New("short link not found")
 type Service interface {
 	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
 	GetOriginalURL(ctx context.Context, shortCode string) (string, error)
+	GetAllURLs(ctx context.Context) ([]*ShortLink, error)
 }
 
 type service struct {
@@ -79,4 +80,8 @@ func generateShortCode(length int) (string, error) {
 		code = code[:length]
 	}
 	return code, nil
+}
+
+func (s *service) GetAllURLs(ctx context.Context) ([]*ShortLink, error) {
+	return s.repo.GetAll(ctx)
 }

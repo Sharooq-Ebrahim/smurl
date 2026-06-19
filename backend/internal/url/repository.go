@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, link *ShortLink) error
 	GetByShortCode(ctx context.Context, shortCode string) (*ShortLink, error)
+	GetAll(ctx context.Context) ([]*ShortLink, error)
 }
 
 type repository struct {
@@ -64,4 +65,41 @@ func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*Sho
 	}
 
 	return link, nil
+}
+
+func (r *repository) GetAll(ctx context.Context) ([]*ShortLink, error) {
+	query := `
+		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at
+		FROM short_links
+		WHERE deleted_at IS NULL
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var links []*ShortLink
+	for rows.Next() {
+		link := &ShortLink{}
+		err := rows.Scan(
+			&link.ID,
+			&link.UserID,
+			&link.ShortCode,
+			&link.OriginalURL,
+			&link.ExpiresAt,
+			&link.CreatedAt,
+			&link.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		links = append(links, link)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return links, nil
 }

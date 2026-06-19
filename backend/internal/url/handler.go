@@ -18,6 +18,7 @@ func NewHandler(service Service) *Handler {
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST("/api/v1/shorten", h.CreateShortLink)
 	r.GET("/:code", h.RedirectURL)
+	r.GET("/api/v1/all", h.GetAllURLs)
 }
 
 func (h *Handler) CreateShortLink(c *gin.Context) {
@@ -56,4 +57,13 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, originalURL)
+}
+
+func (h *Handler) GetAllURLs(c *gin.Context) {
+	links, err := h.service.GetAllURLs(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve all urls"})
+		return
+	}
+	c.JSON(http.StatusOK, links)
 }
