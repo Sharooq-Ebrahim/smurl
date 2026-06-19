@@ -31,7 +31,7 @@ func main() {
 
 	urlRepo := url.NewRepository(dbConn)
 	urlService := url.NewService(urlRepo, baseURL)
-	urlHandler := url.NewHandler(urlService)
+	urlHandler := url.NewHandler(urlService, analyticsService)
 
 	analyticsHandler := analytics.NewHandler(analyticsService)
 

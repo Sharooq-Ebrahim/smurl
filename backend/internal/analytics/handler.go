@@ -16,11 +16,11 @@ func NewHandler(service Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	r.GET("/api/v1/analytics/:url_id", h.GetAnalytics)
-	r.POST("/api/v1/analytics", h.InsertAnalytics)
+	r.GET("/api/v1/analytics/:url_id", h.GetStats)
+	r.POST("/api/v1/analytics", h.TrackClick)
 }
 
-func (h *Handler) GetAnalytics(c *gin.Context) {
+func (h *Handler) GetStats(c *gin.Context) {
 	urlIDStr := c.Param("url_id")
 	urlID, err := strconv.ParseInt(urlIDStr, 10, 64)
 	if err != nil {
@@ -28,17 +28,17 @@ func (h *Handler) GetAnalytics(c *gin.Context) {
 		return
 	}
 
-	analytics, err := h.service.GetAnalytics(c.Request.Context(), urlID)
+	stats, err := h.service.GetStats(c.Request.Context(), urlID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve analytics"})
 		return
 	}
 
-	c.JSON(http.StatusOK, analytics)
+	c.JSON(http.StatusOK, stats)
 }
 
-func (h *Handler) InsertAnalytics(c *gin.Context) {
-	var req InsertAnalyticsRequest
+func (h *Handler) TrackClick(c *gin.Context) {
+	var req TrackClickRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -46,9 +46,9 @@ func (h *Handler) InsertAnalytics(c *gin.Context) {
 
 	err := h.service.TrackClick(c.Request.Context(), req.URLID, req.IPAddress, req.UserAgent)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert analytics"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to track click"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "analytics inserted successfully"})
+	c.JSON(http.StatusCreated, gin.H{"message": "click tracked successfully"})
 }

@@ -8,7 +8,7 @@ import (
 
 type Repository interface {
 	LogClick(ctx context.Context, analytics *ClickAnalytics) error
-	GetAnalyticsByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error)
+	GetClicksByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error)
 }
 
 type repository struct {
@@ -40,7 +40,7 @@ func (r *repository) LogClick(ctx context.Context, analytics *ClickAnalytics) er
 	return err
 }
 
-func (r *repository) GetAnalyticsByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error) {
+func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error) {
 	query := `
 		SELECT id, url_id, clicked_at, ip_address, user_agent
 		FROM click_analytics

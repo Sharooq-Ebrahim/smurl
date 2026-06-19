@@ -10,8 +10,14 @@ type ClickAnalytics struct {
 	UserAgent string    `json:"user_agent"`
 }
 
-type InsertAnalyticsRequest struct {
+type TrackClickRequest struct {
 	URLID     int64  `json:"url_id"`
 	IPAddress string `json:"ip_address"`
 	UserAgent string `json:"user_agent"`
+}
+
+type URLStats struct {
+	URLID       int64 `json:"url_id"`
+	TotalClicks int64 `json:"total_clicks"`
+	DailyClicks int64 `json:"daily_clicks"`
 }

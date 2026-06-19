@@ -3,16 +3,18 @@ package url
 import (
 	"errors"
 	"net/http"
+	"smurl/internal/analytics"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service Service
+	service          Service
+	analyticsService analytics.Service
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, analyticsService analytics.Service) *Handler {
+	return &Handler{service: service, analyticsService: analyticsService}
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
@@ -45,7 +47,7 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		return
 	}
 
-	originalURL, err := h.service.GetOriginalURL(c.Request.Context(), code)
+	link, err := h.service.GetShortLink(c.Request.Context(), code)
 
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -56,7 +58,16 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, originalURL)
+	err = h.analyticsService.TrackClick(c.Request.Context(),
+		link.ID,
+		c.ClientIP(),
+		c.Request.UserAgent(),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to track click"})
+		return
+	}
+	c.Redirect(http.StatusFound, link.OriginalURL)
 }
 
 func (h *Handler) GetAllURLs(c *gin.Context) {
