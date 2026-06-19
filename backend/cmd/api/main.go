@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"smurl/internal/analytics"
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/migration"
@@ -24,14 +25,20 @@ func main() {
 	migration.Run(cfg)
 
 	baseURL := "http://localhost:" + cfg.SERVER_PORT
+
+	analyticsRepo := analytics.NewRepository(dbConn)
+	analyticsService := analytics.NewService(analyticsRepo)
+
 	urlRepo := url.NewRepository(dbConn)
 	urlService := url.NewService(urlRepo, baseURL)
 	urlHandler := url.NewHandler(urlService)
 
+	analyticsHandler := analytics.NewHandler(analyticsService)
+
 	r := gin.Default()
 
-	// Register URL module routes
 	urlHandler.RegisterRoutes(r)
+	analyticsHandler.RegisterRoutes(r)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
