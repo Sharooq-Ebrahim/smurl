@@ -1,20 +1,25 @@
 package url
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"smurl/internal/analytics"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Handler struct {
 	service          Service
 	analyticsService analytics.Service
+	redis            *redis.Client
 }
 
-func NewHandler(service Service, analyticsService analytics.Service) *Handler {
-	return &Handler{service: service, analyticsService: analyticsService}
+func NewHandler(service Service, analyticsService analytics.Service, redis *redis.Client) *Handler {
+	return &Handler{service: service, analyticsService: analyticsService, redis: redis}
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
@@ -41,14 +46,32 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 
 func (h *Handler) RedirectURL(c *gin.Context) {
 	code := c.Param("code")
-
 	if code == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
 		return
 	}
 
-	link, err := h.service.GetShortLink(c.Request.Context(), code)
+	key := "url:v1:" + code
+	ctx := c.Request.Context()
+	ip := c.ClientIP()
+	ua := c.Request.UserAgent()
 
+	cachedURL, err := h.redis.Get(ctx, key).Result()
+	if err == nil && cachedURL != "" {
+		var cachedData CachedLink
+		if err := json.Unmarshal([]byte(cachedURL), &cachedData); err != nil {
+			log.Printf("Failed to unmarshal cache data: %v", err)
+		}
+
+		if err := h.analyticsService.TrackClick(context.Background(), cachedData.ID, ip, ua); err != nil {
+			log.Printf("Failed to track click for %s: %v", key, err)
+		}
+
+		c.Redirect(http.StatusFound, cachedData.OriginalURL)
+		return
+	}
+
+	link, err := h.service.GetShortLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
@@ -58,15 +81,25 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		return
 	}
 
-	err = h.analyticsService.TrackClick(c.Request.Context(),
-		link.ID,
-		c.ClientIP(),
-		c.Request.UserAgent(),
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to track click"})
-		return
+	cacheData := CachedLink{
+		ID:          link.ID,
+		OriginalURL: link.OriginalURL,
 	}
+
+	log.Printf("Cache Data: %v", cacheData)
+	cacheJSON, err := json.Marshal(cacheData)
+	if err != nil {
+		log.Printf("Failed to marshal cache data: %v", err)
+	}
+
+	if err = h.redis.Set(ctx, key, cacheJSON, 0).Err(); err != nil {
+		log.Printf("Failed to set cache for %s: %v", key, err)
+	}
+
+	if err := h.analyticsService.TrackClick(context.Background(), link.ID, ip, ua); err != nil {
+		log.Printf("Failed to track click for %s: %v", key, err)
+	}
+
 	c.Redirect(http.StatusFound, link.OriginalURL)
 }
 

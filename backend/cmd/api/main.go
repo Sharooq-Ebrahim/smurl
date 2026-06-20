@@ -8,6 +8,7 @@ import (
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/migration"
+	"smurl/internal/platform/redis"
 	"smurl/internal/url"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,19 @@ func main() {
 	}
 	defer dbConn.Close()
 
+	redisClient, err := redis.NewRedisClient(cfg)
+	if err != nil {
+		log.Fatalf("Connection to Redis failed: %v", err)
+	}
+	defer redisClient.Close()
+
+	// err = redisClient.FlushAll(context.Background()).Err()
+	// if err != nil {
+	// 	log.Fatalf("Failed to flush Redis: %v", err)
+	// } else {
+	// 	log.Println("Redis flushed successfully")
+	// }
+
 	migration.Run(cfg)
 
 	baseURL := "http://localhost:" + cfg.SERVER_PORT
@@ -31,7 +45,7 @@ func main() {
 
 	urlRepo := url.NewRepository(dbConn)
 	urlService := url.NewService(urlRepo, baseURL)
-	urlHandler := url.NewHandler(urlService, analyticsService)
+	urlHandler := url.NewHandler(urlService, analyticsService, redisClient)
 
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
