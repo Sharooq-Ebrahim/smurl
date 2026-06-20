@@ -3,6 +3,7 @@ package url
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"strings"
@@ -14,6 +15,8 @@ type Service interface {
 	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
 	GetShortLink(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAllURLs(ctx context.Context) ([]*ShortLink, error)
+	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest) error
+	DeleteShortLink(ctx context.Context, shortCode string) error
 }
 
 type service struct {
@@ -84,4 +87,20 @@ func generateShortCode(length int) (string, error) {
 
 func (s *service) GetAllURLs(ctx context.Context) ([]*ShortLink, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest) error {
+	err := s.repo.Update(ctx, shortCode, req.OriginalURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
+}
+
+func (s *service) DeleteShortLink(ctx context.Context, shortCode string) error {
+	err := s.repo.Delete(ctx, shortCode)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
 }

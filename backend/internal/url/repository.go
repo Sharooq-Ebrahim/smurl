@@ -10,6 +10,8 @@ type Repository interface {
 	Create(ctx context.Context, link *ShortLink) error
 	GetByShortCode(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAll(ctx context.Context) ([]*ShortLink, error)
+	Update(ctx context.Context, shortCode string, originalURL string) error
+	Delete(ctx context.Context, shortCode string) error
 }
 
 type repository struct {
@@ -102,4 +104,50 @@ func (r *repository) GetAll(ctx context.Context) ([]*ShortLink, error) {
 	}
 
 	return links, nil
+}
+
+func (r *repository) Update(ctx context.Context, shortCode string, originalURL string) error {
+	query := `
+		UPDATE short_links
+		SET original_url = $1, updated_at = NOW()
+		WHERE short_code = $2 AND deleted_at IS NULL
+	`
+	res, err := r.db.ExecContext(ctx, query, originalURL, shortCode)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *repository) Delete(ctx context.Context, shortCode string) error {
+	query := `
+		UPDATE short_links
+		SET deleted_at = NOW()
+		WHERE short_code = $1 AND deleted_at IS NULL
+	`
+	res, err := r.db.ExecContext(ctx, query, shortCode)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }

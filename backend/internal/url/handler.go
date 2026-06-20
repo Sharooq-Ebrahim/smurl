@@ -24,6 +24,8 @@ func NewHandler(service Service, analyticsService analytics.Service, redis *redi
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST("/api/v1/shorten", h.CreateShortLink)
+	r.PUT("/api/v1/shorten/:code", h.UpdateShortLink)
+	r.DELETE("/api/v1/shorten/:code", h.DeleteShortLink)
 	r.GET("/:code", h.RedirectURL)
 	r.GET("/api/v1/all", h.GetAllURLs)
 }
@@ -110,4 +112,56 @@ func (h *Handler) GetAllURLs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, links)
+}
+
+func (h *Handler) UpdateShortLink(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		return
+	}
+
+	var req UpdateShortLinkRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.service.UpdateShortLink(c.Request.Context(), code, req)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update short link"})
+		return
+	}
+
+	key := "url:v1:" + code
+	h.redis.Del(c.Request.Context(), key)
+
+	c.JSON(http.StatusOK, gin.H{"message": "short link updated successfully"})
+}
+
+func (h *Handler) DeleteShortLink(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		return
+	}
+
+	err := h.service.DeleteShortLink(c.Request.Context(), code)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete short link"})
+		return
+	}
+
+	key := "url:v1:" + code
+	h.redis.Del(c.Request.Context(), key)
+
+	c.JSON(http.StatusOK, gin.H{"message": "short link deleted successfully"})
 }

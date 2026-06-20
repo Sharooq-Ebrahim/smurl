@@ -28,3 +28,7 @@ type CachedLink struct {
     ID          int64  `json:"id"`
     OriginalURL string `json:"original_url"`
 }
+
+type UpdateShortLinkRequest struct {
+	OriginalURL string `json:"original_url"`
+}
