@@ -39,7 +39,7 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 
 	resp, err := h.service.CreateShortLink(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create short link"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

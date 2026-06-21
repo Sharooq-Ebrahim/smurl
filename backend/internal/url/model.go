@@ -14,8 +14,9 @@ type ShortLink struct {
 }
 
 type CreateShortLinkRequest struct {
-	UserID      int64  `json:"user_id" `
-	OriginalURL string `json:"original_url"`
+	UserID          int64  `json:"user_id"`
+	OriginalURL     string `json:"original_url"`
+	CustomShortCode string `json:"custom_short_code"`
 }
 
 type CreateShortLinkResponse struct {
@@ -25,8 +26,8 @@ type CreateShortLinkResponse struct {
 }
 
 type CachedLink struct {
-    ID          int64  `json:"id"`
-    OriginalURL string `json:"original_url"`
+	ID          int64  `json:"id"`
+	OriginalURL string `json:"original_url"`
 }
 
 type UpdateShortLinkRequest struct {

@@ -6,10 +6,21 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"regexp"
 	"strings"
 )
 
 var ErrNotFound = errors.New("short link not found")
+
+var reservedShortCodes = map[string]bool{
+	"login":    true,
+	"register": true,
+	"admin":    true,
+	"api":      true,
+	"docs":     true,
+}
+
+var customShortCodeRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
 
 type Service interface {
 	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
@@ -32,9 +43,34 @@ func NewService(repo Repository, baseURL string) Service {
 }
 
 func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error) {
-	shortCode, err := generateShortCode(8)
-	if err != nil {
-		return nil, err
+
+	var shortCode string
+	var err error
+
+	if req.CustomShortCode != "" {
+
+		if _, exists := reservedShortCodes[req.CustomShortCode]; exists {
+			return nil, errors.New("custom short code is reserved")
+		}
+
+		if !customShortCodeRegex.MatchString(req.CustomShortCode) {
+			return nil, errors.New("custom short code must be 3-20 characters and contain only letters, numbers, hyphens, and underscores")
+		}
+
+		existingLink, err := s.repo.GetByShortCode(ctx, req.CustomShortCode)
+		if err != nil {
+			return nil, err
+		}
+		if existingLink != nil {
+			return nil, errors.New("custom short code already taken")
+		}
+
+		shortCode = req.CustomShortCode
+	} else {
+		shortCode, err = generateShortCode(8)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	link := &ShortLink{
