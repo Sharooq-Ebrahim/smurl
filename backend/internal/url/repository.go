@@ -61,7 +61,7 @@ func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*Sho
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, nil
 		}
 		return nil, err
 	}

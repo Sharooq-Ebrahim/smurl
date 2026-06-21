@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"smurl/internal/analytics"
+	"smurl/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -23,12 +24,17 @@ func NewHandler(service Service, analyticsService analytics.Service, redis *redi
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	r.POST("/api/v1/shorten", h.CreateShortLink)
-	r.PUT("/api/v1/shorten/:code", h.UpdateShortLink)
-	r.DELETE("/api/v1/shorten/:code", h.DeleteShortLink)
 	r.GET("/:code", h.RedirectURL)
-	r.GET("/api/v1/all", h.GetAllURLs)
 	r.GET("/api/v1/qr/:code", h.GetQRCode)
+
+	urlGroup := r.Group("/api/v1")
+	urlGroup.Use(middleware.JWTAuth())
+	{
+		urlGroup.POST("/shorten", h.CreateShortLink)
+		urlGroup.GET("/shorten", h.GetAllURLs)
+		urlGroup.PUT("/shorten/:code", h.UpdateShortLink)
+		urlGroup.DELETE("/shorten/:code", h.DeleteShortLink)
+	}
 }
 
 func (h *Handler) CreateShortLink(c *gin.Context) {
@@ -36,6 +42,10 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if userID, exists := c.Get("user_id"); exists {
+		req.UserID = userID.(int64)
 	}
 
 	resp, err := h.service.CreateShortLink(c.Request.Context(), req)

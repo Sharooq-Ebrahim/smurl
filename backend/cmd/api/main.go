@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"smurl/internal/analytics"
+	"smurl/internal/auth"
 	"smurl/internal/config"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/migration"
@@ -42,17 +43,21 @@ func main() {
 
 	analyticsRepo := analytics.NewRepository(dbConn)
 	analyticsService := analytics.NewService(analyticsRepo)
+	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	urlRepo := url.NewRepository(dbConn)
 	urlService := url.NewService(urlRepo, baseURL)
 	urlHandler := url.NewHandler(urlService, analyticsService, redisClient)
 
-	analyticsHandler := analytics.NewHandler(analyticsService)
+	authRepo := auth.NewRepository(dbConn)
+	authService := auth.NewService(authRepo)
+	authHandler := auth.NewHandler(authService)
 
 	r := gin.Default()
 
 	urlHandler.RegisterRoutes(r)
 	analyticsHandler.RegisterRoutes(r)
+	authHandler.RegisterRoutes(r)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")

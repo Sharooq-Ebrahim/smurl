@@ -22,6 +22,8 @@ type Config struct {
 	REDIS_USER     string
 	REDIS_PASSWORD string
 	REDIS_DB       int
+
+	JWT_SECRET string
 }
 
 func LoadConfig() *Config {
@@ -49,5 +51,6 @@ func LoadConfig() *Config {
 		REDIS_USER:     os.Getenv("REDIS_USER"),
 		REDIS_PASSWORD: os.Getenv("REDIS_PASSWORD"),
 		REDIS_DB:       redisDB,
+		JWT_SECRET:     os.Getenv("JWT_SECRET"),
 	}
 }
