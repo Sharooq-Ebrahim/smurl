@@ -28,6 +28,7 @@ type Service interface {
 	GetAllURLs(ctx context.Context) ([]*ShortLink, error)
 	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest) error
 	DeleteShortLink(ctx context.Context, shortCode string) error
+	GetQRCode(ctx context.Context, shortCode string) ([]byte, error)
 }
 
 type service struct {
@@ -139,4 +140,12 @@ func (s *service) DeleteShortLink(ctx context.Context, shortCode string) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+func (s *service) GetQRCode(ctx context.Context, shortCode string) ([]byte, error) {
+	link, err := s.GetShortLink(ctx, shortCode)
+	if err != nil {
+		return nil, err
+	}
+	return GenerateQRCode(s.baseURL + "/" + link.ShortCode)
 }

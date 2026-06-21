@@ -28,6 +28,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.DELETE("/api/v1/shorten/:code", h.DeleteShortLink)
 	r.GET("/:code", h.RedirectURL)
 	r.GET("/api/v1/all", h.GetAllURLs)
+	r.GET("/api/v1/qr/:code", h.GetQRCode)
 }
 
 func (h *Handler) CreateShortLink(c *gin.Context) {
@@ -164,4 +165,24 @@ func (h *Handler) DeleteShortLink(c *gin.Context) {
 	h.redis.Del(c.Request.Context(), key)
 
 	c.JSON(http.StatusOK, gin.H{"message": "short link deleted successfully"})
+}
+
+func (h *Handler) GetQRCode(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		return
+	}
+
+	qrCode, err := h.service.GetQRCode(c.Request.Context(), code)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve qr code"})
+		return
+	}
+
+	c.Data(http.StatusOK, "image/png", qrCode)
 }
