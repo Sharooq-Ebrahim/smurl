@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		analyticsGroup.GET("/:url_id", h.GetStats)
 		analyticsGroup.GET("/:url_id/timeline", h.GetUrlTimeline)
+		analyticsGroup.GET("/:url_id/devices", h.GetUrlDevices)
 	}
 }
 
@@ -102,4 +103,30 @@ func (h *Handler) GetUrlTimeline(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, timeline)
+}
+
+func (h *Handler) GetUrlDevices(c *gin.Context) {
+
+	urlIDStr := c.Param("url_id")
+	urlID, err := strconv.ParseInt(urlIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid url id format"})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	devices, err := h.service.GetUrlDevices(c.Request.Context(), urlID, userID.(int64))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve url devices"})
+		return
+	}
+
+	c.JSON(http.StatusOK, devices)
+
 }

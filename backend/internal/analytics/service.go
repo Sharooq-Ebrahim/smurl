@@ -10,6 +10,7 @@ type Service interface {
 	TrackClick(ctx context.Context, urlID int64, ipAddress string, userAgent string) error
 	GetStats(ctx context.Context, urlID int64, userID int64) (*URLStats, error)
 	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error)
+	GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error)
 }
 
 type service struct {
@@ -59,4 +60,8 @@ func (s *service) GetStats(ctx context.Context, urlID int64, userID int64) (*URL
 
 func (s *service) GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error) {
 	return s.repo.GetUrlTimeline(ctx, urlID, days, userID)
+}
+
+func (s *service) GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error) {
+	return s.repo.GetUrlDevices(ctx, urlID, userID)
 }

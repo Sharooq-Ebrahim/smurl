@@ -28,3 +28,9 @@ type URLTimelineItem struct {
 	Date   string `json:"date"`
 	Clicks int64  `json:"clicks"`
 }
+
+type URLDeviceItem struct {
+	URLID  int64  `json:"url_id"`
+	Device string `json:"device"`
+	Clicks int64  `json:"clicks"`
+}

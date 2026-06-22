@@ -10,6 +10,7 @@ type Repository interface {
 	LogClick(ctx context.Context, analytics *ClickAnalytics) error
 	GetClicksByURLID(ctx context.Context, urlID int64, userID int64) ([]*ClickAnalytics, error)
 	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error)
+	GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error)
 }
 
 type repository struct {
@@ -110,4 +111,36 @@ func (r *repository) GetUrlTimeline(ctx context.Context, urlID int64, days int, 
 	}
 
 	return timeline, nil
+}
+
+func (r *repository) GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error) {
+	query := `
+		SELECT COALESCE(device, 'Other') AS device, COUNT(c.id) as clicks
+		FROM click_analytics c
+		JOIN short_links s ON c.url_id = s.id
+		WHERE c.url_id = $1 AND s.user_id = $2
+		GROUP BY c.device
+		ORDER BY c.device DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query, urlID, userID)
+	if err != nil {
+		return []*URLDeviceItem{}, err
+	}
+	defer rows.Close()
+
+	var devices []*URLDeviceItem
+	for rows.Next() {
+		d := &URLDeviceItem{URLID: urlID}
+		err := rows.Scan(&d.Device, &d.Clicks)
+		if err != nil {
+			return nil, err
+		}
+		devices = append(devices, d)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return devices, nil
 }
