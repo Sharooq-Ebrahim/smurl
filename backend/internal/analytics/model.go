@@ -21,3 +21,9 @@ type URLStats struct {
 	TotalClicks int64 `json:"total_clicks"`
 	DailyClicks int64 `json:"daily_clicks"`
 }
+
+type URLTimelineItem struct {
+	URLID  int64  `json:"url_id"`
+	Date   string `json:"date"`
+	Clicks int64  `json:"clicks"`
+}

@@ -8,7 +8,8 @@ import (
 
 type Repository interface {
 	LogClick(ctx context.Context, analytics *ClickAnalytics) error
-	GetClicksByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error)
+	GetClicksByURLID(ctx context.Context, urlID int64, userID int64) ([]*ClickAnalytics, error)
+	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error)
 }
 
 type repository struct {
@@ -40,14 +41,15 @@ func (r *repository) LogClick(ctx context.Context, analytics *ClickAnalytics) er
 	return err
 }
 
-func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64) ([]*ClickAnalytics, error) {
+func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64, userID int64) ([]*ClickAnalytics, error) {
 	query := `
-		SELECT id, url_id, clicked_at, ip_address, user_agent
-		FROM click_analytics
-		WHERE url_id = $1
-		ORDER BY clicked_at DESC
+		SELECT c.id, c.url_id, c.clicked_at, c.ip_address, c.user_agent
+		FROM click_analytics c
+		JOIN short_links s ON c.url_id = s.id
+		WHERE c.url_id = $1 AND s.user_id = $2
+		ORDER BY c.clicked_at DESC
 	`
-	rows, err := r.db.QueryContext(ctx, query, urlID)
+	rows, err := r.db.QueryContext(ctx, query, urlID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,4 +76,36 @@ func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64) ([]*Clic
 	}
 
 	return analytics, nil
+}
+
+func (r *repository) GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error) {
+	query := `
+		SELECT TO_CHAR(c.clicked_at, 'YYYY-MM-DD') as date, COUNT(c.id) as clicks
+		FROM click_analytics c
+		JOIN short_links s ON c.url_id = s.id
+		WHERE c.url_id = $1 AND s.user_id = $2 AND c.clicked_at >= $3
+		GROUP BY date
+		ORDER BY date ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, urlID, userID, time.Now().AddDate(0, 0, -days))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var timeline []*URLTimelineItem
+	for rows.Next() {
+		t := &URLTimelineItem{URLID: urlID}
+		err := rows.Scan(&t.Date, &t.Clicks)
+		if err != nil {
+			return nil, err
+		}
+		timeline = append(timeline, t)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return timeline, nil
 }

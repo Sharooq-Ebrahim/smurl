@@ -7,7 +7,8 @@ import (
 
 type Service interface {
 	TrackClick(ctx context.Context, urlID int64, ipAddress string, userAgent string) error
-	GetStats(ctx context.Context, urlID int64) (*URLStats, error)
+	GetStats(ctx context.Context, urlID int64, userID int64) (*URLStats, error)
+	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error)
 }
 
 type service struct {
@@ -28,8 +29,8 @@ func (s *service) TrackClick(ctx context.Context, urlID int64, ipAddress string,
 	return s.repo.LogClick(ctx, analytics)
 }
 
-func (s *service) GetStats(ctx context.Context, urlID int64) (*URLStats, error) {
-	clicks, err := s.repo.GetClicksByURLID(ctx, urlID)
+func (s *service) GetStats(ctx context.Context, urlID int64, userID int64) (*URLStats, error) {
+	clicks, err := s.repo.GetClicksByURLID(ctx, urlID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,4 +45,8 @@ func (s *service) GetStats(ctx context.Context, urlID int64) (*URLStats, error) 
 	}
 
 	return &stats, nil
+}
+
+func (s *service) GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error) {
+	return s.repo.GetUrlTimeline(ctx, urlID, days, userID)
 }
