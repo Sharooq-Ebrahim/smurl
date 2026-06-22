@@ -22,8 +22,8 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) LogClick(ctx context.Context, analytics *ClickAnalytics) error {
 	query := `
-		INSERT INTO click_analytics (url_id, clicked_at, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO click_analytics (url_id, clicked_at, ip_address, user_agent, device)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
 	if analytics.ClickedAt.IsZero() {
@@ -36,6 +36,7 @@ func (r *repository) LogClick(ctx context.Context, analytics *ClickAnalytics) er
 		analytics.ClickedAt,
 		analytics.IPAddress,
 		analytics.UserAgent,
+		analytics.Device,
 	).Scan(&analytics.ID)
 
 	return err
@@ -43,7 +44,7 @@ func (r *repository) LogClick(ctx context.Context, analytics *ClickAnalytics) er
 
 func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64, userID int64) ([]*ClickAnalytics, error) {
 	query := `
-		SELECT c.id, c.url_id, c.clicked_at, c.ip_address, c.user_agent
+		SELECT c.id, c.url_id, c.clicked_at, c.ip_address, c.user_agent, c.device
 		FROM click_analytics c
 		JOIN short_links s ON c.url_id = s.id
 		WHERE c.url_id = $1 AND s.user_id = $2
@@ -64,6 +65,7 @@ func (r *repository) GetClicksByURLID(ctx context.Context, urlID int64, userID i
 			&a.ClickedAt,
 			&a.IPAddress,
 			&a.UserAgent,
+			&a.Device,
 		)
 		if err != nil {
 			return nil, err

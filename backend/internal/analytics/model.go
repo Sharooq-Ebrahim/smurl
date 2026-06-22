@@ -8,6 +8,7 @@ type ClickAnalytics struct {
 	ClickedAt time.Time `json:"clicked_at"`
 	IPAddress string    `json:"ip_address"`
 	UserAgent string    `json:"user_agent"`
+	Device    string    `json:"device"`
 }
 
 type TrackClickRequest struct {

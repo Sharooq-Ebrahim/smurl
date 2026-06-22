@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -20,11 +21,20 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) TrackClick(ctx context.Context, urlID int64, ipAddress string, userAgent string) error {
+	device := "desktop"
+	uaLower := strings.ToLower(userAgent)
+	if strings.Contains(uaLower, "mobi") || strings.Contains(uaLower, "android") || strings.Contains(uaLower, "iphone") {
+		device = "mobile"
+	} else if strings.Contains(uaLower, "ipad") || strings.Contains(uaLower, "tablet") {
+		device = "tablet"
+	}
+
 	analytics := &ClickAnalytics{
 		URLID:     urlID,
 		ClickedAt: time.Now(),
 		IPAddress: ipAddress,
 		UserAgent: userAgent,
+		Device:    device,
 	}
 	return s.repo.LogClick(ctx, analytics)
 }
