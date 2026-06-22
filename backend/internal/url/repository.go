@@ -9,9 +9,9 @@ import (
 type Repository interface {
 	Create(ctx context.Context, link *ShortLink) error
 	GetByShortCode(ctx context.Context, shortCode string) (*ShortLink, error)
-	GetAll(ctx context.Context) ([]*ShortLink, error)
-	Update(ctx context.Context, shortCode string, originalURL string) error
-	Delete(ctx context.Context, shortCode string) error
+	GetAll(ctx context.Context, userID int64) ([]*ShortLink, error)
+	Update(ctx context.Context, shortCode string, originalURL string, userID int64) error
+	Delete(ctx context.Context, shortCode string, userID int64) error
 }
 
 type repository struct {
@@ -69,13 +69,13 @@ func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*Sho
 	return link, nil
 }
 
-func (r *repository) GetAll(ctx context.Context) ([]*ShortLink, error) {
+func (r *repository) GetAll(ctx context.Context, userID int64) ([]*ShortLink, error) {
 	query := `
 		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at
 		FROM short_links
-		WHERE deleted_at IS NULL
+		WHERE user_id = $1 AND deleted_at IS NULL
 	`
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,13 +106,13 @@ func (r *repository) GetAll(ctx context.Context) ([]*ShortLink, error) {
 	return links, nil
 }
 
-func (r *repository) Update(ctx context.Context, shortCode string, originalURL string) error {
+func (r *repository) Update(ctx context.Context, shortCode string, originalURL string, userID int64) error {
 	query := `
 		UPDATE short_links
 		SET original_url = $1, updated_at = NOW()
-		WHERE short_code = $2 AND deleted_at IS NULL
+		WHERE short_code = $2 AND user_id = $3 AND deleted_at IS NULL
 	`
-	res, err := r.db.ExecContext(ctx, query, originalURL, shortCode)
+	res, err := r.db.ExecContext(ctx, query, originalURL, shortCode, userID)
 	if err != nil {
 		return err
 	}
@@ -129,13 +129,13 @@ func (r *repository) Update(ctx context.Context, shortCode string, originalURL s
 	return nil
 }
 
-func (r *repository) Delete(ctx context.Context, shortCode string) error {
+func (r *repository) Delete(ctx context.Context, shortCode string, userID int64) error {
 	query := `
 		UPDATE short_links
 		SET deleted_at = NOW()
-		WHERE short_code = $1 AND deleted_at IS NULL
+		WHERE short_code = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	res, err := r.db.ExecContext(ctx, query, shortCode)
+	res, err := r.db.ExecContext(ctx, query, shortCode, userID)
 	if err != nil {
 		return err
 	}

@@ -25,9 +25,9 @@ var customShortCodeRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
 type Service interface {
 	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
 	GetShortLink(ctx context.Context, shortCode string) (*ShortLink, error)
-	GetAllURLs(ctx context.Context) ([]*ShortLink, error)
-	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest) error
-	DeleteShortLink(ctx context.Context, shortCode string) error
+	GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, error)
+	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error
+	DeleteShortLink(ctx context.Context, shortCode string, userID int64) error
 	GetQRCode(ctx context.Context, shortCode string) ([]byte, error)
 }
 
@@ -122,20 +122,20 @@ func generateShortCode(length int) (string, error) {
 	return code, nil
 }
 
-func (s *service) GetAllURLs(ctx context.Context) ([]*ShortLink, error) {
-	return s.repo.GetAll(ctx)
+func (s *service) GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, error) {
+	return s.repo.GetAll(ctx, userID)
 }
 
-func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest) error {
-	err := s.repo.Update(ctx, shortCode, req.OriginalURL)
+func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error {
+	err := s.repo.Update(ctx, shortCode, req.OriginalURL, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
 	return err
 }
 
-func (s *service) DeleteShortLink(ctx context.Context, shortCode string) error {
-	err := s.repo.Delete(ctx, shortCode)
+func (s *service) DeleteShortLink(ctx context.Context, shortCode string, userID int64) error {
+	err := s.repo.Delete(ctx, shortCode, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}

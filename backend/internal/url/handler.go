@@ -117,7 +117,13 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 }
 
 func (h *Handler) GetAllURLs(c *gin.Context) {
-	links, err := h.service.GetAllURLs(c.Request.Context())
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	links, err := h.service.GetAllURLs(c.Request.Context(), userID.(int64))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve all urls"})
 		return
@@ -138,10 +144,16 @@ func (h *Handler) UpdateShortLink(c *gin.Context) {
 		return
 	}
 
-	err := h.service.UpdateShortLink(c.Request.Context(), code, req)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	err := h.service.UpdateShortLink(c.Request.Context(), code, req, userID.(int64))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found or unauthorized"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update short link"})
@@ -161,10 +173,16 @@ func (h *Handler) DeleteShortLink(c *gin.Context) {
 		return
 	}
 
-	err := h.service.DeleteShortLink(c.Request.Context(), code)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	err := h.service.DeleteShortLink(c.Request.Context(), code, userID.(int64))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found or unauthorized"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete short link"})
