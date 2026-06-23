@@ -2,11 +2,11 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"smurl/internal/analytics"
 	"smurl/internal/auth"
 	"smurl/internal/config"
+	"smurl/internal/health"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/migration"
 	"smurl/internal/platform/redis"
@@ -39,7 +39,7 @@ func main() {
 
 	migration.Run(cfg)
 
-	baseURL := cfg.BASE_URL + ":" + cfg.SERVER_PORT
+	baseURL := cfg.BASE_URL
 
 	analyticsRepo := analytics.NewRepository(dbConn)
 	analyticsService := analytics.NewService(analyticsRepo)
@@ -53,15 +53,15 @@ func main() {
 	authService := auth.NewService(authRepo)
 	authHandler := auth.NewHandler(authService)
 
+	healthHandler := health.NewHandler()
+
 	r := gin.Default()
 
 	urlHandler.RegisterRoutes(r)
 	analyticsHandler.RegisterRoutes(r)
 	authHandler.RegisterRoutes(r)
+	healthHandler.RegisterRoutes(r)
 
-	r.GET("/health", func(c *gin.Context) {
-		c.String(http.StatusOK, "OK")
-	})
 	r.Run(":" + cfg.SERVER_PORT)
 
 	log.Println("Server started on port " + cfg.SERVER_PORT)
