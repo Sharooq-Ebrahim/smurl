@@ -16,6 +16,7 @@ type Config struct {
 	DB_NAME     string
 	DB_SSLMODE  string
 
+	BASE_URL    string
 	SERVER_PORT string
 
 	REDIS_ADDR     string
@@ -46,6 +47,7 @@ func LoadConfig() *Config {
 		DB_PASSWORD:    os.Getenv("DB_PASSWORD"),
 		DB_NAME:        os.Getenv("DB_NAME"),
 		DB_SSLMODE:     os.Getenv("DB_SSLMODE"),
+		BASE_URL:       os.Getenv("BASE_URL"),
 		SERVER_PORT:    os.Getenv("SERVER_PORT"),
 		REDIS_ADDR:     os.Getenv("REDIS_ADDR"),
 		REDIS_USER:     os.Getenv("REDIS_USER"),

@@ -39,7 +39,7 @@ func main() {
 
 	migration.Run(cfg)
 
-	baseURL := "http://localhost:" + cfg.SERVER_PORT
+	baseURL := cfg.BASE_URL + ":" + cfg.SERVER_PORT
 
 	analyticsRepo := analytics.NewRepository(dbConn)
 	analyticsService := analytics.NewService(analyticsRepo)
