@@ -8,19 +8,22 @@ import (
 	"net/http"
 	"smurl/internal/analytics"
 	"smurl/internal/middleware"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"github.com/segmentio/kafka-go"
 )
 
 type Handler struct {
 	service          Service
 	analyticsService analytics.Service
 	redis            *redis.Client
+	kafkaProducer    *kafka.Writer
 }
 
-func NewHandler(service Service, analyticsService analytics.Service, redis *redis.Client) *Handler {
-	return &Handler{service: service, analyticsService: analyticsService, redis: redis}
+func NewHandler(service Service, redis *redis.Client, producer *kafka.Writer) *Handler {
+	return &Handler{service: service, redis: redis, kafkaProducer: producer}
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
@@ -76,8 +79,21 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 			log.Printf("Failed to unmarshal cache data: %v", err)
 		}
 
-		if err := h.analyticsService.TrackClick(context.Background(), cachedData.ID, ip, ua); err != nil {
-			log.Printf("Failed to track click for %s: %v", key, err)
+		event := map[string]interface{}{
+			"short_code": code,
+			"url_id":     cachedData.ID,
+			"user_id":    cachedData.UserID,
+			"ip":         ip,
+			"user_agent": ua,
+			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		}
+		eventBytes, _ := json.Marshal(event)
+
+		if pErr := h.kafkaProducer.WriteMessages(context.Background(), kafka.Message{
+			Key:   []byte(code),
+			Value: eventBytes,
+		}); pErr != nil {
+			log.Printf("Failed to produce click event for %s: %v", code, pErr)
 		}
 
 		c.Redirect(http.StatusFound, cachedData.OriginalURL)
@@ -96,6 +112,7 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 
 	cacheData := CachedLink{
 		ID:          link.ID,
+		UserID:      link.UserID,
 		OriginalURL: link.OriginalURL,
 	}
 
@@ -109,10 +126,22 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		log.Printf("Failed to set cache for %s: %v", key, err)
 	}
 
-	if err := h.analyticsService.TrackClick(context.Background(), link.ID, ip, ua); err != nil {
-		log.Printf("Failed to track click for %s: %v", key, err)
+	event := map[string]interface{}{
+		"short_code": code,
+		"url_id":     link.ID,
+		"user_id":    link.UserID,
+		"ip":         ip,
+		"user_agent": ua,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	}
+	eventBytes, _ := json.Marshal(event)
 
+	if pErr := h.kafkaProducer.WriteMessages(context.Background(), kafka.Message{
+		Key:   []byte(code),
+		Value: eventBytes,
+	}); pErr != nil {
+		log.Printf("Failed to produce click event for %s: %v", code, pErr)
+	}
 	c.Redirect(http.StatusFound, link.OriginalURL)
 }
 

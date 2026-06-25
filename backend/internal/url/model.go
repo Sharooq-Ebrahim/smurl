@@ -27,6 +27,7 @@ type CreateShortLinkResponse struct {
 
 type CachedLink struct {
 	ID          int64  `json:"id"`
+	UserID      int64  `json:"user_id"`
 	OriginalURL string `json:"original_url"`
 }
 

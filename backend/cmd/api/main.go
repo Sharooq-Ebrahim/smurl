@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"smurl/internal/analytics"
@@ -8,6 +9,7 @@ import (
 	"smurl/internal/config"
 	"smurl/internal/health"
 	"smurl/internal/platform/db"
+	"smurl/internal/platform/kafka"
 	"smurl/internal/platform/migration"
 	"smurl/internal/platform/redis"
 	"smurl/internal/url"
@@ -17,6 +19,17 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
+
+	err := kafka.PingKafka(cfg)
+	if err != nil {
+		log.Fatalf("Connection to Kafka failed: %v", err)
+	}
+
+	producer := kafka.NewProducer(cfg.KAFKA_BROKERS, cfg.KAFKA_TOPIC)
+	defer producer.Close()
+
+	consumer := kafka.NewConsumer(cfg.KAFKA_BROKERS, cfg.KAFKA_TOPIC, cfg.KAFKA_GROUP_ID)
+	defer consumer.Close()
 
 	dbConn, err := db.ConnectToDB(cfg)
 	if err != nil {
@@ -43,11 +56,15 @@ func main() {
 
 	analyticsRepo := analytics.NewRepository(dbConn)
 	analyticsService := analytics.NewService(analyticsRepo)
+
+	analyticsWorker := analytics.NewConsumerWorker(consumer, analyticsService)
+	analyticsWorker.Start(context.Background())
+
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	urlRepo := url.NewRepository(dbConn)
 	urlService := url.NewService(urlRepo, baseURL)
-	urlHandler := url.NewHandler(urlService, analyticsService, redisClient)
+	urlHandler := url.NewHandler(urlService, redisClient, producer)
 
 	authRepo := auth.NewRepository(dbConn)
 	authService := auth.NewService(authRepo)

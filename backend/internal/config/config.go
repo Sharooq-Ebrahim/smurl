@@ -25,6 +25,10 @@ type Config struct {
 	REDIS_DB       int
 
 	JWT_SECRET string
+
+	KAFKA_BROKERS  []string
+	KAFKA_TOPIC    string
+	KAFKA_GROUP_ID string
 }
 
 func LoadConfig() *Config {
@@ -54,5 +58,8 @@ func LoadConfig() *Config {
 		REDIS_PASSWORD: os.Getenv("REDIS_PASSWORD"),
 		REDIS_DB:       redisDB,
 		JWT_SECRET:     os.Getenv("JWT_SECRET"),
+		KAFKA_BROKERS:  []string{os.Getenv("KAFKA_BROKERS")},
+		KAFKA_TOPIC:    os.Getenv("KAFKA_TOPIC"),
+		KAFKA_GROUP_ID: os.Getenv("KAFKA_GROUP_ID"),
 	}
 }
