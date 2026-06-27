@@ -27,6 +27,7 @@ type Service interface {
 	GetShortLink(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, error)
 	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error
+	UpdateShortLinkStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error
 	DeleteShortLink(ctx context.Context, shortCode string, userID int64) error
 	GetQRCode(ctx context.Context, shortCode string) ([]byte, error)
 }
@@ -88,6 +89,7 @@ func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkReques
 		ShortCode:   link.ShortCode,
 		OriginalURL: link.OriginalURL,
 		ShortURL:    s.baseURL + "/" + link.ShortCode,
+		IsActive:    link.IsActive,
 	}, nil
 }
 
@@ -127,7 +129,15 @@ func (s *service) GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, e
 }
 
 func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error {
-	err := s.repo.Update(ctx, shortCode, req.OriginalURL, userID)
+	err := s.repo.Update(ctx, shortCode, req, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
+}
+
+func (s *service) UpdateShortLinkStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error {
+	err := s.repo.UpdateStatus(ctx, shortCode, isActive, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}

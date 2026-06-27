@@ -10,7 +10,8 @@ type Repository interface {
 	Create(ctx context.Context, link *ShortLink) error
 	GetByShortCode(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAll(ctx context.Context, userID int64) ([]*ShortLink, error)
-	Update(ctx context.Context, shortCode string, originalURL string, userID int64) error
+	Update(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error
+	UpdateStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error
 	Delete(ctx context.Context, shortCode string, userID int64) error
 }
 
@@ -24,9 +25,9 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, link *ShortLink) error {
 	query := `
-		INSERT INTO short_links (user_id, short_code, original_url, expires_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at, updated_at
+		INSERT INTO short_links (user_id, short_code, original_url, expires_at, is_active)
+		VALUES ($1, $2, $3, $4, true)
+		RETURNING id, created_at, updated_at, is_active
 	`
 	err := r.db.QueryRowContext(
 		ctx,
@@ -35,7 +36,7 @@ func (r *repository) Create(ctx context.Context, link *ShortLink) error {
 		link.ShortCode,
 		link.OriginalURL,
 		link.ExpiresAt,
-	).Scan(&link.ID, &link.CreatedAt, &link.UpdatedAt)
+	).Scan(&link.ID, &link.CreatedAt, &link.UpdatedAt, &link.IsActive)
 
 	return err
 }
@@ -43,7 +44,7 @@ func (r *repository) Create(ctx context.Context, link *ShortLink) error {
 func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*ShortLink, error) {
 
 	query := `
-		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at
+		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at, is_active
 		FROM short_links
 		WHERE short_code = $1 AND deleted_at IS NULL
 	`
@@ -57,6 +58,7 @@ func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*Sho
 		&link.ExpiresAt,
 		&link.CreatedAt,
 		&link.UpdatedAt,
+		&link.IsActive,
 	)
 
 	if err != nil {
@@ -71,7 +73,7 @@ func (r *repository) GetByShortCode(ctx context.Context, shortCode string) (*Sho
 
 func (r *repository) GetAll(ctx context.Context, userID int64) ([]*ShortLink, error) {
 	query := `
-		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at
+		SELECT id, user_id, short_code, original_url, expires_at, created_at, updated_at, is_active
 		FROM short_links
 		WHERE user_id = $1 AND deleted_at IS NULL
 	`
@@ -92,6 +94,7 @@ func (r *repository) GetAll(ctx context.Context, userID int64) ([]*ShortLink, er
 			&link.ExpiresAt,
 			&link.CreatedAt,
 			&link.UpdatedAt,
+			&link.IsActive,
 		)
 		if err != nil {
 			return nil, err
@@ -106,13 +109,50 @@ func (r *repository) GetAll(ctx context.Context, userID int64) ([]*ShortLink, er
 	return links, nil
 }
 
-func (r *repository) Update(ctx context.Context, shortCode string, originalURL string, userID int64) error {
+func (r *repository) Update(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error {
+	var query string
+	var args []interface{}
+
+	if req.IsActive != nil {
+		query = `
+			UPDATE short_links
+			SET original_url = $1, is_active = $2, updated_at = NOW()
+			WHERE short_code = $3 AND user_id = $4 AND deleted_at IS NULL
+		`
+		args = []interface{}{req.OriginalURL, *req.IsActive, shortCode, userID}
+	} else {
+		query = `
+			UPDATE short_links
+			SET original_url = $1, updated_at = NOW()
+			WHERE short_code = $2 AND user_id = $3 AND deleted_at IS NULL
+		`
+		args = []interface{}{req.OriginalURL, shortCode, userID}
+	}
+
+	res, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *repository) UpdateStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error {
 	query := `
 		UPDATE short_links
-		SET original_url = $1, updated_at = NOW()
+		SET is_active = $1, updated_at = NOW()
 		WHERE short_code = $2 AND user_id = $3 AND deleted_at IS NULL
 	`
-	res, err := r.db.ExecContext(ctx, query, originalURL, shortCode, userID)
+	res, err := r.db.ExecContext(ctx, query, isActive, shortCode, userID)
 	if err != nil {
 		return err
 	}

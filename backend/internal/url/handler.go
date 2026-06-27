@@ -2,12 +2,14 @@ package url
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"smurl/internal/analytics"
 	"smurl/internal/middleware"
+	"smurl/internal/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +23,9 @@ type Handler struct {
 	redis            *redis.Client
 	kafkaProducer    *kafka.Writer
 }
+
+//go:embed templates/disabled.html
+var disabledURLHTML []byte
 
 func NewHandler(service Service, redis *redis.Client, producer *kafka.Writer) *Handler {
 	return &Handler{service: service, redis: redis, kafkaProducer: producer}
@@ -36,6 +41,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		urlGroup.POST("/shorten", h.CreateShortLink)
 		urlGroup.GET("/shorten", h.GetAllURLs)
 		urlGroup.PUT("/shorten/:code", h.UpdateShortLink)
+		urlGroup.PATCH("/shorten/:code/status", h.UpdateShortLinkStatus)
 		urlGroup.DELETE("/shorten/:code", h.DeleteShortLink)
 	}
 }
@@ -79,6 +85,11 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 			log.Printf("Failed to unmarshal cache data: %v", err)
 		}
 
+		if !cachedData.IsActive {
+			utils.RenderHTML(c, http.StatusForbidden, disabledURLHTML)
+			return
+		}
+
 		event := map[string]interface{}{
 			"short_code": code,
 			"url_id":     cachedData.ID,
@@ -114,6 +125,7 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		ID:          link.ID,
 		UserID:      link.UserID,
 		OriginalURL: link.OriginalURL,
+		IsActive:    link.IsActive,
 	}
 
 	log.Printf("Cache Data: %v", cacheData)
@@ -142,6 +154,12 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 	}); pErr != nil {
 		log.Printf("Failed to produce click event for %s: %v", code, pErr)
 	}
+
+	if !link.IsActive {
+		utils.RenderHTML(c, http.StatusForbidden, disabledURLHTML)
+		return
+	}
+
 	c.Redirect(http.StatusFound, link.OriginalURL)
 }
 
@@ -222,6 +240,44 @@ func (h *Handler) DeleteShortLink(c *gin.Context) {
 	h.redis.Del(c.Request.Context(), key)
 
 	c.JSON(http.StatusOK, gin.H{"message": "short link deleted successfully"})
+}
+
+func (h *Handler) UpdateShortLinkStatus(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		return
+	}
+
+	var req UpdateShortLinkStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	err := h.service.UpdateShortLinkStatus(c.Request.Context(), code, req.IsActive, userID.(int64))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update url status"})
+		return
+	}
+
+	key := "url:v1:" + code
+	h.redis.Del(c.Request.Context(), key)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "URL status updated successfully.",
+		"is_active": req.IsActive,
+	})
 }
 
 func (h *Handler) GetQRCode(c *gin.Context) {
