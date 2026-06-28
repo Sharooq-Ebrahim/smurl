@@ -4,8 +4,8 @@ window.env = [
     target: { API_BASE_URL: "http://localhost:8080" }
   },
   {
-    source: "https://staging.example.com",
-    target: { API_BASE_URL: "https://staging-api.example.com" }
+    source: "https://smurl-chi.vercel.app",
+    target: { API_BASE_URL: "http://localhost:8080" }
   },
   {
     source: "https://app.example.com",
