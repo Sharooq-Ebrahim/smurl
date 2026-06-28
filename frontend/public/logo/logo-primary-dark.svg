@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" fill="none">
+  <g>
+    <path d="M 90 20 L 50 20 A 20 20 0 0 0 50 60 L 70 60 A 20 20 0 0 1 70 100 L 30 100" stroke="#4F46E5" stroke-width="20" stroke-linecap="round" />
+    <path d="M 60 60 L 70 60 A 20 20 0 0 1 70 100 L 30 100" stroke="#06B6D4" stroke-width="20" stroke-linecap="round" />
+  </g>
+  <text x="130" y="86" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="84" letter-spacing="-0.04em">
+    <tspan fill="#ffffff">Sm</tspan><tspan fill="#06B6D4">url</tspan>
+  </text>
+</svg>
