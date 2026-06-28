@@ -5,7 +5,7 @@ window.env = [
   },
   {
     source: "https://smurl-chi.vercel.app",
-    target: { API_BASE_URL: "http://localhost:8080" }
+    target: { API_BASE_URL: "https://smurl-production.up.railway.app" }
   },
   {
     source: "https://app.example.com",
