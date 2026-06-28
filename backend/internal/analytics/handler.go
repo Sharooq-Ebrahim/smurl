@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"net/http"
+	"smurl/internal/utils"
 	"strconv"
 
 	"smurl/internal/middleware"
@@ -33,39 +34,38 @@ func (h *Handler) GetStats(c *gin.Context) {
 	urlIDStr := c.Param("url_id")
 	urlID, err := strconv.ParseInt(urlIDStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid url id format"})
+		utils.Error(c, http.StatusBadRequest, "invalid url id format")
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	stats, err := h.service.GetStats(c.Request.Context(), urlID, userID.(int64))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve analytics"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve analytics")
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	utils.Success(c, http.StatusOK, "Analytics retrieved successfully", stats)
 }
 
 func (h *Handler) TrackClick(c *gin.Context) {
 	var req TrackClickRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err := h.service.TrackClick(c.Request.Context(), req.URLID, req.IPAddress, req.UserAgent)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to track click"})
+	if err := h.service.TrackClick(c.Request.Context(), req.URLID, req.IPAddress, req.UserAgent); err != nil {
+		utils.Error(c, http.StatusInternalServerError, "failed to track click")
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "click tracked successfully"})
+	utils.Success(c, http.StatusCreated, "click tracked successfully", nil)
 }
 
 func (h *Handler) GetUrlTimeline(c *gin.Context) {
@@ -73,36 +73,36 @@ func (h *Handler) GetUrlTimeline(c *gin.Context) {
 	urlIDStr := c.Param("url_id")
 	urlID, err := strconv.ParseInt(urlIDStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid url id format"})
+		utils.Error(c, http.StatusBadRequest, "invalid url id format")
 		return
 	}
 
 	days := c.Query("days")
 
 	if days == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "days is required"})
+		utils.Error(c, http.StatusBadRequest, "days is required")
 		return
 	}
 
 	parsedDays, err := strconv.Atoi(days)
 	if err != nil || parsedDays <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or negative days format"})
+		utils.Error(c, http.StatusBadRequest, "invalid or negative days format")
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	timeline, err := h.service.GetUrlTimeline(c.Request.Context(), urlID, parsedDays, userID.(int64))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve url timeline"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve url timeline")
 		return
 	}
 
-	c.JSON(http.StatusOK, timeline)
+	utils.Success(c, http.StatusOK, "Timeline retrieved successfully", timeline)
 }
 
 func (h *Handler) GetUrlDevices(c *gin.Context) {
@@ -110,23 +110,23 @@ func (h *Handler) GetUrlDevices(c *gin.Context) {
 	urlIDStr := c.Param("url_id")
 	urlID, err := strconv.ParseInt(urlIDStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid url id format"})
+		utils.Error(c, http.StatusBadRequest, "invalid url id format")
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	devices, err := h.service.GetUrlDevices(c.Request.Context(), urlID, userID.(int64))
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve url devices"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve url devices")
 		return
 	}
 
-	c.JSON(http.StatusOK, devices)
+	utils.Success(c, http.StatusOK, "Devices retrieved successfully", devices)
 
 }

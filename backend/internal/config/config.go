@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -26,9 +27,10 @@ type Config struct {
 
 	JWT_SECRET string
 
-	KAFKA_BROKERS  []string
-	KAFKA_TOPIC    string
-	KAFKA_GROUP_ID string
+	KAFKA_BROKERS   []string
+	KAFKA_TOPIC     string
+	KAFKA_GROUP_ID  string
+	ALLOWED_ORIGINS []string
 }
 
 func LoadConfig() *Config {
@@ -44,22 +46,25 @@ func LoadConfig() *Config {
 		redisDB = 0
 	}
 
+	allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+
 	return &Config{
-		DB_HOST:        os.Getenv("DB_HOST"),
-		DB_PORT:        os.Getenv("DB_PORT"),
-		DB_USER:        os.Getenv("DB_USER"),
-		DB_PASSWORD:    os.Getenv("DB_PASSWORD"),
-		DB_NAME:        os.Getenv("DB_NAME"),
-		DB_SSLMODE:     os.Getenv("DB_SSLMODE"),
-		BASE_URL:       os.Getenv("BASE_URL"),
-		SERVER_PORT:    os.Getenv("SERVER_PORT"),
-		REDIS_ADDR:     os.Getenv("REDIS_ADDR"),
-		REDIS_USER:     os.Getenv("REDIS_USER"),
-		REDIS_PASSWORD: os.Getenv("REDIS_PASSWORD"),
-		REDIS_DB:       redisDB,
-		JWT_SECRET:     os.Getenv("JWT_SECRET"),
-		KAFKA_BROKERS:  []string{os.Getenv("KAFKA_BROKERS")},
-		KAFKA_TOPIC:    os.Getenv("KAFKA_TOPIC"),
-		KAFKA_GROUP_ID: os.Getenv("KAFKA_GROUP_ID"),
+		DB_HOST:         os.Getenv("DB_HOST"),
+		DB_PORT:         os.Getenv("DB_PORT"),
+		DB_USER:         os.Getenv("DB_USER"),
+		DB_PASSWORD:     os.Getenv("DB_PASSWORD"),
+		DB_NAME:         os.Getenv("DB_NAME"),
+		DB_SSLMODE:      os.Getenv("DB_SSLMODE"),
+		BASE_URL:        os.Getenv("BASE_URL"),
+		SERVER_PORT:     os.Getenv("SERVER_PORT"),
+		REDIS_ADDR:      os.Getenv("REDIS_ADDR"),
+		REDIS_USER:      os.Getenv("REDIS_USER"),
+		REDIS_PASSWORD:  os.Getenv("REDIS_PASSWORD"),
+		REDIS_DB:        redisDB,
+		JWT_SECRET:      os.Getenv("JWT_SECRET"),
+		KAFKA_BROKERS:   []string{os.Getenv("KAFKA_BROKERS")},
+		KAFKA_TOPIC:     os.Getenv("KAFKA_TOPIC"),
+		KAFKA_GROUP_ID:  os.Getenv("KAFKA_GROUP_ID"),
+		ALLOWED_ORIGINS: allowedOrigins,
 	}
 }

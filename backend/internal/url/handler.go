@@ -49,7 +49,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 func (h *Handler) CreateShortLink(c *gin.Context) {
 	var req CreateShortLinkRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -59,17 +59,17 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 
 	resp, err := h.service.CreateShortLink(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	utils.Success(c, http.StatusCreated, "Short link created successfully", resp)
 }
 
 func (h *Handler) RedirectURL(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		utils.Error(c, http.StatusBadRequest, "short code is required")
 		return
 	}
 
@@ -114,10 +114,10 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 	link, err := h.service.GetShortLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			utils.Error(c, http.StatusNotFound, "short link not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve original url"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve original url")
 		return
 	}
 
@@ -166,134 +166,131 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 func (h *Handler) GetAllURLs(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	links, err := h.service.GetAllURLs(c.Request.Context(), userID.(int64))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve all urls"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve all urls")
 		return
 	}
-	c.JSON(http.StatusOK, links)
+	utils.Success(c, http.StatusOK, "URLs retrieved successfully", links)
 }
 
 func (h *Handler) UpdateShortLink(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		utils.Error(c, http.StatusBadRequest, "short code is required")
 		return
 	}
 
 	var req UpdateShortLinkRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	err := h.service.UpdateShortLink(c.Request.Context(), code, req, userID.(int64))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found or unauthorized"})
+			utils.Error(c, http.StatusNotFound, "short link not found or unauthorized")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update short link"})
+		utils.Error(c, http.StatusInternalServerError, "failed to update short link")
 		return
 	}
 
 	key := "url:v1:" + code
 	h.redis.Del(c.Request.Context(), key)
 
-	c.JSON(http.StatusOK, gin.H{"message": "short link updated successfully"})
+	utils.Success(c, http.StatusOK, "short link updated successfully", nil)
 }
 
 func (h *Handler) DeleteShortLink(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		utils.Error(c, http.StatusBadRequest, "short code is required")
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	err := h.service.DeleteShortLink(c.Request.Context(), code, userID.(int64))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found or unauthorized"})
+			utils.Error(c, http.StatusNotFound, "short link not found or unauthorized")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete short link"})
+		utils.Error(c, http.StatusInternalServerError, "failed to delete short link")
 		return
 	}
 
 	key := "url:v1:" + code
 	h.redis.Del(c.Request.Context(), key)
 
-	c.JSON(http.StatusOK, gin.H{"message": "short link deleted successfully"})
+	utils.Success(c, http.StatusOK, "short link deleted successfully", nil)
 }
 
 func (h *Handler) UpdateShortLinkStatus(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		utils.Error(c, http.StatusBadRequest, "short code is required")
 		return
 	}
 
 	var req UpdateShortLinkStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		utils.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	err := h.service.UpdateShortLinkStatus(c.Request.Context(), code, req.IsActive, userID.(int64))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			utils.Error(c, http.StatusNotFound, "short link not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update url status"})
+		utils.Error(c, http.StatusInternalServerError, "failed to update url status")
 		return
 	}
 
 	key := "url:v1:" + code
 	h.redis.Del(c.Request.Context(), key)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":   "URL status updated successfully.",
-		"is_active": req.IsActive,
-	})
+	utils.Success(c, http.StatusOK, "URL status updated successfully.", gin.H{"is_active": req.IsActive})
 }
 
 func (h *Handler) GetQRCode(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "short code is required"})
+		utils.Error(c, http.StatusBadRequest, "short code is required")
 		return
 	}
 
 	qrCode, err := h.service.GetQRCode(c.Request.Context(), code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "short link not found"})
+			utils.Error(c, http.StatusNotFound, "short link not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve qr code"})
+		utils.Error(c, http.StatusInternalServerError, "failed to retrieve qr code")
 		return
 	}
 

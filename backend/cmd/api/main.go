@@ -13,7 +13,9 @@ import (
 	"smurl/internal/platform/migration"
 	"smurl/internal/platform/redis"
 	"smurl/internal/url"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,6 +44,8 @@ func main() {
 		log.Fatalf("Connection to Redis failed: %v", err)
 	}
 	defer redisClient.Close()
+
+	log.Println("Allowed origins: ", cfg.ALLOWED_ORIGINS)
 
 	// err = redisClient.FlushAll(context.Background()).Err()
 	// if err != nil {
@@ -73,6 +77,15 @@ func main() {
 	healthHandler := health.NewHandler()
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     cfg.ALLOWED_ORIGINS,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	urlHandler.RegisterRoutes(r)
 	analyticsHandler.RegisterRoutes(r)

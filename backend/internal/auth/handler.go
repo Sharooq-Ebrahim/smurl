@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"smurl/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,44 +28,43 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	resp, err := h.service.Register(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrEmailExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			utils.Error(c, http.StatusConflict, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to register user"})
+		utils.Error(c, http.StatusInternalServerError, "failed to register user")
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	utils.Success(c, http.StatusCreated, "User registered successfully", resp)
 }
 
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	resp, err := h.service.Login(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCred) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			utils.Error(c, http.StatusUnauthorized, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to login"})
+		utils.Error(c, http.StatusInternalServerError, "failed to login")
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	utils.Success(c, http.StatusOK, "Login successful", resp)
 }
 
 func (h *Handler) Logout(c *gin.Context) {
-	// JWT is stateless, so we just return success
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	utils.Success(c, http.StatusOK, "logged out successfully", nil)
 }
