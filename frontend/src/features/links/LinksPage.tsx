@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Copy, QrCode, Edit2, Trash2, Link2 } from "lucide-react";
-import { useLinks, useDeleteLink } from "./useLinks";
+import { useLinks, useDeleteLink, useUpdateLinkStatus } from "./useLinks";
 import { getQRCodeUrl } from "@/api/links";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -18,7 +18,11 @@ import type { ShortLink } from "@/types";
 export function LinksPage() {
   const { data: links, isLoading } = useLinks();
   const deleteMutation = useDeleteLink();
+  const statusMutation = useUpdateLinkStatus();
   const [search, setSearch] = useState("");
+  const [pendingStatusCode, setPendingStatusCode] = useState<string | null>(
+    null,
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editLink, setEditLink] = useState<ShortLink | null>(null);
@@ -55,6 +59,30 @@ export function LinksPage() {
         toast.error("Failed to delete", "Something went wrong");
       },
     });
+  };
+
+  const handleToggleStatus = (link: ShortLink) => {
+    const newStatus = !link.is_active;
+    setPendingStatusCode(link.short_code);
+    statusMutation.mutate(
+      { code: link.short_code, data: { is_active: newStatus } },
+      {
+        onSuccess: () => {
+          toast.success(
+            newStatus ? "Link activated" : "Link deactivated",
+            `smurl.com/${link.short_code} is now ${
+              newStatus ? "active" : "inactive"
+            }.`,
+          );
+        },
+        onError: () => {
+          toast.error("Failed to update status", "Please try again.");
+        },
+        onSettled: () => {
+          setPendingStatusCode(null);
+        },
+      },
+    );
   };
 
   return (
@@ -94,14 +122,14 @@ export function LinksPage() {
 
         {/* Table with horizontal scroll on mobile */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[600px]">
+          <table className="w-full text-sm text-left min-w-[800px] table-fixed">
             <thead className="bg-surface-muted text-text-secondary font-medium border-b border-border">
               <tr>
-                <th className="px-4 sm:px-6 py-3">Short Link</th>
+                <th className="px-4 sm:px-6 py-3 w-32">Short Link</th>
                 <th className="px-4 sm:px-6 py-3">Original URL</th>
-                <th className="px-4 sm:px-6 py-3">Status</th>
-                <th className="px-4 sm:px-6 py-3">Created</th>
-                <th className="px-4 sm:px-6 py-3 text-right">Actions</th>
+                <th className="px-4 sm:px-6 py-3 w-48">Status</th>
+                <th className="px-4 sm:px-6 py-3 w-40">Created</th>
+                <th className="px-4 sm:px-6 py-3 w-48 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -128,11 +156,46 @@ export function LinksPage() {
                         {link.original_url}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        {expired ? (
-                          <Badge variant="muted">Expired</Badge>
-                        ) : (
-                          <Badge variant="success">Active</Badge>
-                        )}
+                        <div className="flex items-center gap-2.5">
+                          {/* Toggle switch */}
+                          <button
+                            role="switch"
+                            aria-checked={link.is_active}
+                            aria-label={`Toggle ${link.short_code}`}
+                            disabled={
+                              expired || pendingStatusCode === link.short_code
+                            }
+                            onClick={() => handleToggleStatus(link)}
+                            className={[
+                              "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full border-2 border-transparent",
+                              "transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-1",
+                              "disabled:cursor-not-allowed disabled:opacity-40",
+                              link.is_active
+                                ? "bg-brand-500"
+                                : "bg-border dark:bg-border",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={[
+                                "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition-transform",
+                                link.is_active
+                                  ? "translate-x-4"
+                                  : "translate-x-0",
+                              ].join(" ")}
+                            />
+                          </button>
+
+                          {/* Status text */}
+                          <span className="text-sm font-medium">
+                            {expired ? (
+                              <span className="text-text-muted">Expired</span>
+                            ) : link.is_active ? (
+                              <span className="text-[#16A34A]">Active</span>
+                            ) : (
+                              <span className="text-[#6B7280]">Inactive</span>
+                            )}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-text-muted whitespace-nowrap">
                         {formatDate(link.created_at)}

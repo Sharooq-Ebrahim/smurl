@@ -17,9 +17,14 @@ export interface ShortLink {
   user_id: number
   short_code: string
   original_url: string
+  is_active: boolean
   expires_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface UpdateShortLinkStatusRequest {
+  is_active: boolean
 }
 
 export interface CreateShortLinkRequest {

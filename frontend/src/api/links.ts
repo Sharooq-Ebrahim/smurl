@@ -4,6 +4,7 @@ import type {
   CreateShortLinkRequest,
   CreateShortLinkResponse,
   UpdateShortLinkRequest,
+  UpdateShortLinkStatusRequest,
 } from '@/types'
 
 export async function getLinks(): Promise<ShortLink[]> {
@@ -26,6 +27,13 @@ export async function updateLink(
   data: UpdateShortLinkRequest,
 ): Promise<void> {
   await apiClient.put(`/api/v1/shorten/${code}`, data)
+}
+
+export async function updateLinkStatus(
+  code: string,
+  data: UpdateShortLinkStatusRequest,
+): Promise<void> {
+  await apiClient.patch(`/api/v1/shorten/${code}/status`, data)
 }
 
 export async function deleteLink(code: string): Promise<void> {

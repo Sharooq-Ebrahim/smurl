@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getLinks, createLink, updateLink, deleteLink } from '@/api/links'
+import { getLinks, createLink, updateLink, updateLinkStatus, deleteLink } from '@/api/links'
 import { getStats, getTimeline, getDevices } from '@/api/analytics'
-import type { CreateShortLinkRequest, UpdateShortLinkRequest } from '@/types'
+import type { CreateShortLinkRequest, UpdateShortLinkRequest, UpdateShortLinkStatusRequest } from '@/types'
 
 export const LINKS_QUERY_KEY = ['links'] as const
 
@@ -25,6 +25,15 @@ export function useUpdateLink() {
   return useMutation({
     mutationFn: ({ code, data }: { code: string; data: UpdateShortLinkRequest }) =>
       updateLink(code, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LINKS_QUERY_KEY }),
+  })
+}
+
+export function useUpdateLinkStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ code, data }: { code: string; data: UpdateShortLinkStatusRequest }) =>
+      updateLinkStatus(code, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: LINKS_QUERY_KEY }),
   })
 }
