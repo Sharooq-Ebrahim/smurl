@@ -13,6 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/store/toastStore";
 import { formatDate, isExpired } from "@/lib/utils";
+import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import type { ShortLink } from "@/types";
 
 export function LinksPage() {
@@ -38,8 +39,9 @@ export function LinksPage() {
 
   const handleCopy = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/${code}`);
-      toast.success("Copied to clipboard", `smurl.com/${code}`);
+      const baseUrl = getRuntimeConfig("API_BASE_URL");
+      await navigator.clipboard.writeText(`${baseUrl}/${code}`);
+      toast.success("Copied to clipboard", `${baseUrl.replace(/^https?:\/\//, "")}/${code}`);
     } catch {
       toast.error("Failed to copy", "Please try again");
     }
@@ -280,7 +282,7 @@ export function LinksPage() {
               className="w-48 h-48 rounded-lg border border-border"
             />
             <p className="mt-4 text-sm font-medium text-text-primary">
-              {window.location.origin}/{qrLink.short_code}
+              {getRuntimeConfig("API_BASE_URL")}/{qrLink.short_code}
             </p>
           </div>
         )}

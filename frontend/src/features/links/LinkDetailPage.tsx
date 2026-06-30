@@ -29,6 +29,7 @@ import { toast } from "@/store/toastStore";
 import { formatDate, isExpired } from "@/lib/utils";
 import { EditLinkModal } from "./EditLinkModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { getRuntimeConfig } from "@/lib/runtimeConfig";
 
 // ─── small helpers ────────────────────────────────────────────────────────────
 
@@ -170,7 +171,9 @@ export function LinkDetailPage() {
 
   // ── derived values ───────────────────────────────────────────────────────
 
-  const shortUrl = `${window.location.origin}/${link.short_code}`;
+  const baseUrl = getRuntimeConfig("API_BASE_URL");
+  const shortUrl = `${baseUrl}/${link.short_code}`;
+  const displayHost = baseUrl.replace(/^https?:\/\//, "");
   const favicon = getFaviconUrl(link.original_url);
   const hostname = getHostname(link.original_url);
   const expired = isExpired(link.expires_at);
@@ -264,7 +267,7 @@ export function LinkDetailPage() {
                 />
               )}
               <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight font-mono">
-                {window.location.host}/{link.short_code}
+                {displayHost}/{link.short_code}
               </h1>
               {expired ? (
                 <Badge variant="muted">Expired</Badge>
