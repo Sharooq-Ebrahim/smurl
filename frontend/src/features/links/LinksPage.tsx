@@ -188,11 +188,11 @@ export function LinksPage() {
                           {/* Status text */}
                           <span className="text-sm font-medium">
                             {expired ? (
-                              <span className="text-text-muted">Expired</span>
+                              <span className="text-amber-600">Expired</span>
                             ) : link.is_active ? (
-                              <span className="text-[#16A34A]">Active</span>
+                              <span className="text-green-600">Active</span>
                             ) : (
-                              <span className="text-[#6B7280]">Inactive</span>
+                              <span className="text-gray-500">Inactive</span>
                             )}
                           </span>
                         </div>
