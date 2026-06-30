@@ -188,11 +188,22 @@ export function LinkDetailPage() {
     }
   };
 
-  const handleDownloadQR = () => {
-    const a = document.createElement("a");
-    a.href = getQRCodeUrl(link.short_code);
-    a.download = `qr-${link.short_code}.png`;
-    a.click();
+  const handleDownloadQR = async () => {
+    try {
+      const response = await fetch(getQRCodeUrl(link.short_code));
+      if (!response.ok) throw new Error("Failed to fetch QR code");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `qr-${link.short_code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Download failed", "Could not download the QR code. Please try again.");
+    }
   };
 
   const handleDelete = () => {

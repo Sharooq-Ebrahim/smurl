@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/axios'
+import { getRuntimeConfig } from '@/lib/runtimeConfig'
 import type {
   ShortLink,
   CreateShortLinkRequest,
@@ -40,6 +41,8 @@ export async function deleteLink(code: string): Promise<void> {
   await apiClient.delete(`/api/v1/shorten/${code}`)
 }
 
+
 export function getQRCodeUrl(code: string): string {
-  return `/api/v1/qr/${code}`
+  const baseUrl = getRuntimeConfig('API_BASE_URL')
+  return `${baseUrl}/api/v1/qr/${code}`
 }
