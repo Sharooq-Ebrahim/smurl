@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/segmentio/kafka-go"
@@ -32,6 +33,9 @@ func (w *ConsumerWorker) Start(ctx context.Context) {
 		for {
 			msg, err := w.reader.FetchMessage(ctx)
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					break
+				}
 				log.Printf("Failed to fetch message or consumer closed: %v", err)
 				break
 			}

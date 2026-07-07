@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"smurl/internal/analytics"
 	"smurl/internal/auth"
@@ -62,7 +66,9 @@ func main() {
 	analyticsService := analytics.NewService(analyticsRepo)
 
 	analyticsWorker := analytics.NewConsumerWorker(consumer, analyticsService)
-	analyticsWorker.Start(context.Background())
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+	analyticsWorker.Start(workerCtx)
 
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
@@ -92,7 +98,32 @@ func main() {
 	authHandler.RegisterRoutes(r)
 	healthHandler.RegisterRoutes(r)
 
-	r.Run(":" + cfg.SERVER_PORT)
+	// r.Run(":" + cfg.SERVER_PORT)
+
+	server := &http.Server{
+		Addr:    ":" + cfg.SERVER_PORT,
+		Handler: r,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("Server failed: ", err)
+		}
+	}()
 
 	log.Println("Server started on port " + cfg.SERVER_PORT)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	<-stop
+
+	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Println("Server forced to shutdown:", err)
+	}
+	log.Println("Server exited")
+
 }
