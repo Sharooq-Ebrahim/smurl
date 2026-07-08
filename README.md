@@ -4,7 +4,7 @@
 
 *A high-performance, analytics-driven URL shortener built for speed and scale.*
 
-![Smurl Banner](./assets/banner.png)
+<img src="./assets/banner.svg" alt="Smurl Banner" width="800">
 
 [![Go](https://img.shields.io/badge/Go-1.20+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
