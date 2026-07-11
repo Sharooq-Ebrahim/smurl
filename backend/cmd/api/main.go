@@ -12,6 +12,7 @@ import (
 	"smurl/internal/auth"
 	"smurl/internal/config"
 	"smurl/internal/health"
+	"smurl/internal/middleware"
 	"smurl/internal/platform/db"
 	"smurl/internal/platform/kafka"
 	"smurl/internal/platform/migration"
@@ -92,6 +93,9 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
+	rateLimiter := middleware.NewRateLimiter(redisClient)
+	r.Use(rateLimiter.Middleware())
 
 	urlHandler.RegisterRoutes(r)
 	analyticsHandler.RegisterRoutes(r)
