@@ -7,9 +7,12 @@ import {
   MousePointerClick,
   TrendingUp,
 } from "lucide-react";
+import { PlanCard } from "@/components/subscription/PlanCard";
+import { usePlan } from "@/features/subscription/usePlan";
 
 export function DashboardPage() {
   const { data: links, isLoading } = useLinks();
+  const { plan } = usePlan();
 
   if (isLoading) return <PageSpinner />;
 
@@ -61,6 +64,9 @@ export function DashboardPage() {
           </div>
           <p className="text-3xl font-bold text-text-primary">—</p>
         </div>
+      </div>
+      <div className="mb-6 sm:mb-8">
+        <PlanCard plan={plan} />
       </div>
 
       <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">

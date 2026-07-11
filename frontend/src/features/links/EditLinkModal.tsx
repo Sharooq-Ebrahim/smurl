@@ -10,6 +10,9 @@ import { useUpdateLink } from "./useLinks";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/utils";
 import type { ShortLink } from "@/types";
+import { usePlan } from "@/features/subscription/usePlan";
+import { PremiumBadge } from "@/components/subscription/PremiumBadge";
+import { PremiumFeature } from "@/components/subscription/PremiumFeature";
 
 const schema = z.object({
   original_url: z.string().url("Enter a valid URL (include https://)"),
@@ -26,13 +29,8 @@ interface Props {
 
 export function EditLinkModal({ open, onClose, link }: Props) {
   const updateMutation = useUpdateLink();
+  const { canUseExpiration } = usePlan();
 
-  const formatDateForInput = (dateStr: string | null) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
 
   const {
     register,
@@ -71,7 +69,12 @@ export function EditLinkModal({ open, onClose, link }: Props) {
           onClose();
         },
         onError: (error) => {
-          setError("root", { message: getErrorMessage(error) });
+          const msg = getErrorMessage(error);
+          if (msg.toLowerCase().includes("premium")) {
+            setError("root", { message: "This feature requires a Premium subscription." });
+          } else {
+            setError("root", { message: msg });
+          }
         },
       },
     );
@@ -93,20 +96,27 @@ export function EditLinkModal({ open, onClose, link }: Props) {
           error={errors.original_url?.message}
           {...register("original_url")}
         />
-        <Controller
-          control={control}
-          name="expires_at"
-          render={({ field }) => (
-            <DatePicker
-              label="Expiration date"
-              hint="Leave empty for no expiration"
-              value={field.value}
-              onChange={field.onChange}
-              error={errors.expires_at?.message}
-              disablePastDates={true}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-primary">Expiration date</span>
+            {!canUseExpiration && <PremiumBadge />}
+          </div>
+          <PremiumFeature hasAccess={canUseExpiration} featureName="Link Expiration">
+            <Controller
+              control={control}
+              name="expires_at"
+              render={({ field }) => (
+                <DatePicker
+                  hint="Leave empty for no expiration"
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.expires_at?.message}
+                  disablePastDates={true}
+                />
+              )}
             />
-          )}
-        />
+          </PremiumFeature>
+        </div>
 
         {errors.root && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400 px-3 py-2 rounded-lg">

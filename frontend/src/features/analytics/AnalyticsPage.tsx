@@ -31,6 +31,8 @@ import {
 import { PageSpinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useTheme } from "@/lib/theme";
+import { usePlan } from "@/features/subscription/usePlan";
+import { PremiumAccessDenied } from "@/components/subscription/PremiumAccessDenied";
 
 const DAYS_OPTIONS = [7, 14, 30] as const;
 type DaysOption = (typeof DAYS_OPTIONS)[number];
@@ -78,6 +80,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export function AnalyticsPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const { canViewAdvancedAnalytics } = usePlan();
 
   const { data: links, isLoading: linksLoading } = useLinks();
   const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null);
@@ -129,6 +132,24 @@ export function AnalyticsPage() {
   const chartAxisLineColor = isDark ? "#374151" : "#e5e7eb";
 
   if (linksLoading) return <PageSpinner />;
+  if (!canViewAdvancedAnalytics) {
+    return (
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
+            Analytics
+          </h1>
+          <p className="text-sm text-text-muted mt-1">
+            Deep dive into your link performance
+          </p>
+        </div>
+        <PremiumAccessDenied
+          title="Advanced Analytics"
+          description="Upgrade to Premium to view detailed click timelines, device breakdowns, and advanced analytics for all your links."
+        />
+      </div>
+    );
+  }
 
   if (!links || links.length === 0) {
     return (

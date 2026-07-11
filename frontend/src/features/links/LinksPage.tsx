@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Copy, QrCode, Edit2, Trash2, Link2 } from "lucide-react";
+import { Plus, Search, Copy, QrCode, Edit2, Trash2, Link2, Download } from "lucide-react";
 import { useLinks, useDeleteLink, useUpdateLinkStatus } from "./useLinks";
 import { getQRCodeUrl } from "@/api/links";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,8 @@ import { toast } from "@/store/toastStore";
 import { formatDate, isExpired } from "@/lib/utils";
 import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import type { ShortLink } from "@/types";
+import { usePlan } from "@/features/subscription/usePlan";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 export function LinksPage() {
   const { data: links, isLoading } = useLinks();
@@ -29,6 +31,8 @@ export function LinksPage() {
   const [editLink, setEditLink] = useState<ShortLink | null>(null);
   const [deleteLink, setDeleteLink] = useState<ShortLink | null>(null);
   const [qrLink, setQrLink] = useState<ShortLink | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { canGenerateQRCode } = usePlan();
 
   if (isLoading) return <PageSpinner />;
 
@@ -212,7 +216,13 @@ export function LinksPage() {
                             <Copy className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => setQrLink(link)}
+                            onClick={() => {
+                              if (canGenerateQRCode) {
+                                setQrLink(link);
+                              } else {
+                                setUpgradeOpen(true);
+                              }
+                            }}
                             className="p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-muted rounded-md "
                             title="QR Code"
                           >
@@ -275,18 +285,45 @@ export function LinksPage() {
       />
       <Modal open={!!qrLink} onClose={() => setQrLink(null)} title="QR Code">
         {qrLink && (
-          <div className="flex flex-col items-center justify-center py-4">
-            <img
-              src={getQRCodeUrl(qrLink.short_code)}
-              alt="QR Code"
-              className="w-48 h-48 rounded-lg border border-border"
-            />
-            <p className="mt-4 text-sm font-medium text-text-primary">
+          <div className="flex flex-col items-center justify-center py-4 gap-4">
+            <div className="p-3 bg-white rounded-xl border border-border shadow-sm">
+              <img
+                src={getQRCodeUrl(qrLink.short_code)}
+                alt="QR Code"
+                className="w-48 h-48 rounded-lg"
+              />
+            </div>
+            <p className="text-sm font-medium text-text-primary">
               {getRuntimeConfig("API_BASE_URL")}/{qrLink.short_code}
             </p>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(getQRCodeUrl(qrLink.short_code));
+                  if (!response.ok) throw new Error();
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `qr-${qrLink.short_code}.png`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                } catch {
+                  toast.error("Download failed", "Please try again.");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary"
+            >
+              <Download className="h-3 w-3" />
+              Download QR
+            </button>
           </div>
         )}
       </Modal>
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { LinksPage } from "@/features/links/LinksPage";
 import { LinkDetailPage } from "@/features/links/LinkDetailPage";
 import { AnalyticsPage } from "@/features/analytics/AnalyticsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { PremiumFeaturesPage } from "@/pages/PremiumFeaturesPage";
 
 export function AppRouter() {
   return (
@@ -30,6 +31,7 @@ export function AppRouter() {
             <Route path="/links/:code" element={<LinkDetailPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/premium" element={<PremiumFeaturesPage />} />
           </Route>
         </Route>
 

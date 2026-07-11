@@ -8,30 +8,36 @@ import {
   LogOut,
   Menu,
   X,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/links", label: "Links", icon: Link2, end: false },
-  { to: "/analytics", label: "Analytics", icon: BarChart2, end: false },
-  { to: "/settings", label: "Settings", icon: Settings, end: false },
-];
+import { usePlan } from "@/features/subscription/usePlan";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 function SidebarContent({
   user,
+  isPremium,
   onLogout,
   onNavClick,
 }: {
-  user: { name: string; email: string } | null;
+  user: { name: string; email: string; plan?: string } | null;
+  isPremium: boolean;
   onLogout: () => void;
   onNavClick?: () => void;
 }) {
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const navItems = [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+    { to: "/links", label: "My Links", icon: Link2, end: false },
+    { to: "/analytics", label: "Analytics", icon: BarChart2, end: false },
+    { to: "/settings", label: "Settings", icon: Settings, end: false },
+  ];
+
   return (
     <>
-      {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
         <div className="flex items-center justify-center">
           <img src="/logo/icon.svg" alt="Smurl Icon" className="h-6 w-6" />
@@ -41,7 +47,6 @@ function SidebarContent({
         </span>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5">
         {navItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
@@ -62,9 +67,33 @@ function SidebarContent({
             {label}
           </NavLink>
         ))}
+        {isPremium ? (
+          <NavLink
+            to="/premium"
+            onClick={onNavClick}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ",
+                isActive
+                  ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  : "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20",
+              )
+            }
+          >
+            <Crown className="h-4 w-4 shrink-0" />
+            Premium Features
+          </NavLink>
+        ) : (
+          <button
+            onClick={() => setUpgradeOpen(true)}
+            className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer"
+          >
+            <Crown className="h-4 w-4 shrink-0" />
+            Premium
+          </button>
+        )}
       </nav>
 
-      {/* User + controls */}
       <div className="p-3 border-t border-border">
         <div className="flex items-center justify-between rounded-lg px-3 py-2">
           <div className="min-w-0">
@@ -86,6 +115,8 @@ function SidebarContent({
           </div>
         </div>
       </div>
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </>
   );
 }
@@ -94,6 +125,7 @@ export function AppLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { isPremium } = usePlan();
 
   const handleLogout = () => {
     logout();
@@ -102,12 +134,14 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen bg-surface">
-      {/* Desktop Sidebar — hidden on mobile */}
       <aside className="hidden md:flex w-56 flex-col border-r border-border bg-surface shrink-0">
-        <SidebarContent user={user} onLogout={handleLogout} />
+        <SidebarContent
+          user={user}
+          isPremium={isPremium}
+          onLogout={handleLogout}
+        />
       </aside>
 
-      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between h-14 px-4 border-b border-border bg-surface">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center">
@@ -152,6 +186,7 @@ export function AppLayout() {
             <div className="flex flex-col flex-1">
               <SidebarContent
                 user={user}
+                isPremium={isPremium}
                 onLogout={handleLogout}
                 onNavClick={() => setDrawerOpen(false)}
               />

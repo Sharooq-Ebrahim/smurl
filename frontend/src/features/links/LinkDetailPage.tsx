@@ -12,7 +12,6 @@ import {
   Download,
   Globe,
   BarChart2,
-  Power,
   Check,
   Clock,
   Info,
@@ -20,8 +19,15 @@ import {
   List,
   FileText,
   Activity,
+  Crown,
+  Lock,
 } from "lucide-react";
-import { useLinks, useLinkStats, useDeleteLink, useUpdateLinkStatus } from "./useLinks";
+import {
+  useLinks,
+  useLinkStats,
+  useDeleteLink,
+  useUpdateLinkStatus,
+} from "./useLinks";
 import { getQRCodeUrl } from "@/api/links";
 import { PageSpinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
@@ -30,6 +36,9 @@ import { formatDate, isExpired } from "@/lib/utils";
 import { EditLinkModal } from "./EditLinkModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getRuntimeConfig } from "@/lib/runtimeConfig";
+import { usePlan } from "@/features/subscription/usePlan";
+import { PremiumBadge } from "@/components/subscription/PremiumBadge";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 // ─── small helpers ────────────────────────────────────────────────────────────
 
@@ -91,9 +100,7 @@ function SectionCard({ title, description, icon, children }: SectionCardProps) {
           <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
         </div>
         {description && (
-          <p className="text-xs text-text-muted">
-            {description}
-          </p>
+          <p className="text-xs text-text-muted">{description}</p>
         )}
       </div>
       <div className="p-5">{children}</div>
@@ -147,6 +154,8 @@ export function LinkDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [notes, setNotes] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { canGenerateQRCode } = usePlan();
 
   // ── loading / not-found ──────────────────────────────────────────────────
 
@@ -205,7 +214,10 @@ export function LinkDetailPage() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error("Download failed", "Could not download the QR code. Please try again.");
+      toast.error(
+        "Download failed",
+        "Could not download the QR code. Please try again.",
+      );
     }
   };
 
@@ -230,7 +242,8 @@ export function LinkDetailPage() {
             `smurl.com/${link.short_code} is now ${newStatus ? "active" : "inactive"}.`,
           );
         },
-        onError: () => toast.error("Failed to update status", "Please try again."),
+        onError: () =>
+          toast.error("Failed to update status", "Please try again."),
       },
     );
   };
@@ -239,7 +252,6 @@ export function LinkDetailPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-
       {/* Back nav */}
       <Link
         to="/links"
@@ -252,10 +264,8 @@ export function LinkDetailPage() {
       {/* ── Header card ────────────────────────────────────────────────── */}
       <div className="bg-surface rounded-xl border border-border shadow-sm p-5 sm:p-6">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-
           {/* Left: identity */}
           <div className="flex-1 min-w-0 space-y-4">
-
             {/* Favicon + short URL + badge */}
             <div className="flex flex-wrap items-center gap-3">
               {favicon && (
@@ -308,9 +318,11 @@ export function LinkDetailPage() {
             <div className="flex flex-wrap gap-2 pt-1">
               <ActionBtn
                 icon={
-                  copied
-                    ? <Check className="h-3.5 w-3.5 text-green-600" />
-                    : <Copy className="h-3.5 w-3.5" />
+                  copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )
                 }
                 label={copied ? "Copied!" : "Copy link"}
                 onClick={handleCopy}
@@ -341,51 +353,85 @@ export function LinkDetailPage() {
 
           {/* QR Code */}
           <div className="shrink-0 self-start mx-auto md:mx-0 flex flex-col items-center gap-2">
-            <div className="p-3 bg-white rounded-xl border border-border shadow-sm">
-              <img
-                src={getQRCodeUrl(link.short_code)}
-                alt="QR Code"
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded"
-              />
-            </div>
-            <button
-              onClick={handleDownloadQR}
-              className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary"
-            >
-              <Download className="h-3 w-3" />
-              Download QR
-            </button>
+            {canGenerateQRCode ? (
+              <>
+                <div className="p-3 bg-white rounded-xl border border-border shadow-sm">
+                  <img
+                    src={getQRCodeUrl(link.short_code)}
+                    alt="QR Code"
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded"
+                  />
+                </div>
+                <button
+                  onClick={handleDownloadQR}
+                  className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary"
+                >
+                  <Download className="h-3 w-3" />
+                  Download QR
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setUpgradeOpen(true)}
+                  className="group relative p-3 bg-surface-muted rounded-xl border border-dashed border-amber-300 dark:border-amber-700/50 shadow-sm w-[7.5rem] sm:w-36 h-[7.5rem] sm:h-36 flex flex-col items-center justify-center gap-2 hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-all cursor-pointer"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                    <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 text-center leading-tight">
+                    QR Code
+                  </span>
+                  <PremiumBadge size="sm" />
+                </button>
+                <button
+                  onClick={() => setUpgradeOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                >
+                  <Crown className="h-3 w-3" />
+                  Upgrade for QR
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* ── Stats grid ─────────────────────────────────────────────────── */}
-      <SectionCard 
+      <SectionCard
         title="Performance"
         description="Overview of link click activity and analytics."
         icon={<Activity className="h-4 w-4" />}
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
-            icon={<MousePointerClick className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+            icon={
+              <MousePointerClick className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            }
             iconBg="bg-blue-50 dark:bg-blue-950/40"
             label="Total Clicks"
             value={stats?.total_clicks ?? 0}
           />
           <StatCard
-            icon={<TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />}
+            icon={
+              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+            }
             iconBg="bg-green-50 dark:bg-green-950/40"
             label="Today"
             value={stats?.daily_clicks ?? 0}
           />
           <StatCard
-            icon={<BarChart2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+            icon={
+              <BarChart2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            }
             iconBg="bg-purple-50 dark:bg-purple-950/40"
             label="Last 7 Days"
             value="—"
           />
           <StatCard
-            icon={<Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />}
+            icon={
+              <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            }
             iconBg="bg-orange-50 dark:bg-orange-950/40"
             label="Last Click"
             value="—"
@@ -402,24 +448,26 @@ export function LinkDetailPage() {
 
       {/* ── Bottom two-column grid ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-
-
-
         {/* Advanced info */}
-        <SectionCard 
+        <SectionCard
           title="Details"
           description="Advanced configuration and metadata."
           icon={<List className="h-4 w-4" />}
         >
           <dl className="space-y-3 text-sm">
             {[
-              { label: "Short Code", value: <span className="font-mono">{link.short_code}</span> },
+              {
+                label: "Short Code",
+                value: <span className="font-mono">{link.short_code}</span>,
+              },
               { label: "Redirect Type", value: "302 Temporary" },
               {
                 label: "Expiration",
-                value: link.expires_at
-                  ? formatDate(link.expires_at)
-                  : <span className="text-text-muted">Never</span>,
+                value: link.expires_at ? (
+                  formatDate(link.expires_at)
+                ) : (
+                  <span className="text-text-muted">Never</span>
+                ),
               },
               {
                 label: "Password",
@@ -427,7 +475,10 @@ export function LinkDetailPage() {
               },
               { label: "Last updated", value: formatDate(link.updated_at) },
             ].map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between gap-4">
+              <div
+                key={label}
+                className="flex items-center justify-between gap-4"
+              >
                 <dt className="text-text-muted shrink-0">{label}</dt>
                 <dd className="text-text-primary text-right">{value}</dd>
               </div>
@@ -435,23 +486,23 @@ export function LinkDetailPage() {
           </dl>
         </SectionCard>
         {/* ── Notes ──────────────────────────────────────────────────────── */}
-        <SectionCard 
+        <SectionCard
           title="Notes"
           description="Internal session notes."
           icon={<FileText className="h-4 w-4" />}
         >
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add internal notes about this link…"
-          rows={3}
-          className="w-full resize-none text-sm text-text-primary bg-surface-muted border border-border rounded-lg px-3 py-2.5 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-        />
-        <p className="mt-1.5 text-xs text-text-muted flex items-center gap-1">
-          <Info className="h-3 w-3" />
-          Notes are saved locally in this session.
-        </p>
-      </SectionCard>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add internal notes about this link…"
+            rows={3}
+            className="w-full resize-none text-sm text-text-primary bg-surface-muted border border-border rounded-lg px-3 py-2.5 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+          />
+          <p className="mt-1.5 text-xs text-text-muted flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            Notes are saved locally in this session.
+          </p>
+        </SectionCard>
       </div>
 
       {/* ── Link Settings ───────────────────────────────────────────────── */}
@@ -467,7 +518,7 @@ export function LinkDetailPage() {
             Manage the configuration and availability of this short link.
           </p>
         </div>
-        
+
         <div className="p-0">
           {/* Link Status Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 border-b border-border">
@@ -533,7 +584,7 @@ export function LinkDetailPage() {
         />
       )}
 
-
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
 
       <ConfirmDialog
         open={deleteOpen}
