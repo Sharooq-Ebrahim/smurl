@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"smurl/internal/subscription"
 	"smurl/internal/utils"
 	"time"
 
@@ -38,7 +39,12 @@ func (r *RateLimiter) Middleware() gin.HandlerFunc {
 			r.rdb.Expire(ctx, key, 30*time.Second)
 		}
 
-		if count > 5 {
+		userPlan := ""
+		if plan, exists := c.Get("user_plan"); exists {
+			userPlan = plan.(string)
+		}
+
+		if count > int64(subscription.GetRateLimit(userPlan)) {
 			utils.Error(c, http.StatusTooManyRequests, "too many requests")
 			c.Abort()
 			return

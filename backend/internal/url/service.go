@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"regexp"
+	"smurl/internal/subscription"
 	"strings"
 	"time"
 )
@@ -25,14 +26,14 @@ var reservedShortCodes = map[string]bool{
 var customShortCodeRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
 
 type Service interface {
-	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
+	CreateShortLink(ctx context.Context, req CreateShortLinkRequest, userPlan string) (*CreateShortLinkResponse, error)
 	GetShortLink(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetShortLinkForRedirect(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, error)
-	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error
+	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64, userPlan string) error
 	UpdateShortLinkStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error
 	DeleteShortLink(ctx context.Context, shortCode string, userID int64) error
-	GetQRCode(ctx context.Context, shortCode string) ([]byte, error)
+	GetQRCode(ctx context.Context, shortCode string, userPlan string) ([]byte, error)
 }
 
 type service struct {
@@ -47,7 +48,7 @@ func NewService(repo Repository, baseURL string) Service {
 	}
 }
 
-func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error) {
+func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkRequest, userPlan string) (*CreateShortLinkResponse, error) {
 
 	var shortCode string
 	var err error
@@ -79,6 +80,9 @@ func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkReques
 	}
 
 	if req.ExpiresAt != nil {
+		if !subscription.CanUseExpiration(userPlan) {
+			return nil, subscription.ErrPremiumRequired
+		}
 		utcTime := req.ExpiresAt.UTC()
 		if utcTime.Before(time.Now().UTC()) {
 			return nil, errors.New("expiration time cannot be in the past")
@@ -157,8 +161,11 @@ func (s *service) GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, e
 	return s.repo.GetAll(ctx, userID)
 }
 
-func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error {
+func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64, userPlan string) error {
 	if req.ExpiresAt != nil {
+		if !subscription.CanUseExpiration(userPlan) {
+			return subscription.ErrPremiumRequired
+		}
 		utcTime := req.ExpiresAt.UTC()
 		if utcTime.Before(time.Now().UTC()) {
 			return errors.New("expiration time cannot be in the past")
@@ -189,7 +196,10 @@ func (s *service) DeleteShortLink(ctx context.Context, shortCode string, userID 
 	return err
 }
 
-func (s *service) GetQRCode(ctx context.Context, shortCode string) ([]byte, error) {
+func (s *service) GetQRCode(ctx context.Context, shortCode string, userPlan string) ([]byte, error) {
+	if !subscription.CanGenerateQRCode(userPlan) {
+		return nil, subscription.ErrPremiumRequired
+	}
 	link, err := s.GetShortLink(ctx, shortCode)
 	if err != nil {
 		return nil, err

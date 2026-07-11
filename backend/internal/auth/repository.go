@@ -23,8 +23,8 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, user *User) error {
 	query := `
-		INSERT INTO users (name, email, password)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (name, email, password, plan)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at
 	`
 	err := r.db.QueryRowContext(
@@ -33,6 +33,7 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 		user.Name,
 		user.Email,
 		user.Password,
+		user.Plan,
 	).Scan(&user.ID, &user.CreatedAt)
 
 	return err
@@ -40,7 +41,7 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 
 func (r *repository) GetByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
-		SELECT id, name, email, password, created_at
+		SELECT id, name, email, password, plan, created_at
 		FROM users
 		WHERE email = $1
 	`
@@ -50,6 +51,7 @@ func (r *repository) GetByEmail(ctx context.Context, email string) (*User, error
 		&user.Name,
 		&user.Email,
 		&user.Password,
+		&user.Plan,
 		&user.CreatedAt,
 	)
 

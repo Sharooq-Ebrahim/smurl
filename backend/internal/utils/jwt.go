@@ -14,14 +14,16 @@ var jwtKey = []byte(config.LoadConfig().JWT_SECRET)
 type JWTClaim struct {
 	UserID int64  `json:"user_id"`
 	Email  string `json:"email"`
+	Plan   string `json:"plan"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID int64, email string) (string, error) {
+func GenerateToken(userID int64, email string, plan string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &JWTClaim{
 		UserID: userID,
 		Email:  email,
+		Plan:   plan,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},

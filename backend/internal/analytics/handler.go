@@ -1,7 +1,9 @@
 package analytics
 
 import (
+	"errors"
 	"net/http"
+	"smurl/internal/subscription"
 	"smurl/internal/utils"
 	"strconv"
 
@@ -96,8 +98,17 @@ func (h *Handler) GetUrlTimeline(c *gin.Context) {
 		return
 	}
 
-	timeline, err := h.service.GetUrlTimeline(c.Request.Context(), urlID, parsedDays, userID.(int64))
+	userPlan := ""
+	if plan, exists := c.Get("user_plan"); exists {
+		userPlan = plan.(string)
+	}
+
+	timeline, err := h.service.GetUrlTimeline(c.Request.Context(), urlID, parsedDays, userID.(int64), userPlan)
 	if err != nil {
+		if errors.Is(err, subscription.ErrPremiumRequired) {
+			utils.Error(c, http.StatusForbidden, err.Error())
+			return
+		}
 		utils.Error(c, http.StatusInternalServerError, "failed to retrieve url timeline")
 		return
 	}
@@ -120,9 +131,18 @@ func (h *Handler) GetUrlDevices(c *gin.Context) {
 		return
 	}
 
-	devices, err := h.service.GetUrlDevices(c.Request.Context(), urlID, userID.(int64))
+	userPlan := ""
+	if plan, exists := c.Get("user_plan"); exists {
+		userPlan = plan.(string)
+	}
+
+	devices, err := h.service.GetUrlDevices(c.Request.Context(), urlID, userID.(int64), userPlan)
 
 	if err != nil {
+		if errors.Is(err, subscription.ErrPremiumRequired) {
+			utils.Error(c, http.StatusForbidden, err.Error())
+			return
+		}
 		utils.Error(c, http.StatusInternalServerError, "failed to retrieve url devices")
 		return
 	}

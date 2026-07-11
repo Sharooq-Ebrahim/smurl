@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+	"smurl/internal/subscription"
 	"strings"
 	"time"
 )
@@ -9,8 +10,8 @@ import (
 type Service interface {
 	TrackClick(ctx context.Context, urlID int64, ipAddress string, userAgent string) error
 	GetStats(ctx context.Context, urlID int64, userID int64) (*URLStats, error)
-	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error)
-	GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error)
+	GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64, userPlan string) ([]*URLTimelineItem, error)
+	GetUrlDevices(ctx context.Context, urlID int64, userID int64, userPlan string) ([]*URLDeviceItem, error)
 }
 
 type service struct {
@@ -58,10 +59,16 @@ func (s *service) GetStats(ctx context.Context, urlID int64, userID int64) (*URL
 	return &stats, nil
 }
 
-func (s *service) GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64) ([]*URLTimelineItem, error) {
+func (s *service) GetUrlTimeline(ctx context.Context, urlID int64, days int, userID int64, userPlan string) ([]*URLTimelineItem, error) {
+	if !subscription.CanViewAdvancedAnalytics(userPlan) {
+		return nil, subscription.ErrPremiumRequired
+	}
 	return s.repo.GetUrlTimeline(ctx, urlID, days, userID)
 }
 
-func (s *service) GetUrlDevices(ctx context.Context, urlID int64, userID int64) ([]*URLDeviceItem, error) {
+func (s *service) GetUrlDevices(ctx context.Context, urlID int64, userID int64, userPlan string) ([]*URLDeviceItem, error) {
+	if !subscription.CanViewAdvancedAnalytics(userPlan) {
+		return nil, subscription.ErrPremiumRequired
+	}
 	return s.repo.GetUrlDevices(ctx, urlID, userID)
 }

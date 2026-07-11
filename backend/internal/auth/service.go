@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"smurl/internal/subscription"
 	"smurl/internal/utils"
 )
 
@@ -42,13 +43,14 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*AuthRespo
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: hashedPassword,
+		Plan:     string(subscription.PlanFree),
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
 		return nil, err
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Email)
+	token, err := utils.GenerateToken(user.ID, user.Email, user.Plan)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +74,7 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, e
 		return nil, ErrInvalidCred
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Email)
+	token, err := utils.GenerateToken(user.ID, user.Email, user.Plan)
 	if err != nil {
 		return nil, err
 	}

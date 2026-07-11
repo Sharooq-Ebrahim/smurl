@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"smurl/internal/analytics"
 	"smurl/internal/middleware"
+	"smurl/internal/subscription"
 	"smurl/internal/utils"
 	"time"
 
@@ -60,8 +61,17 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 		req.UserID = userID.(int64)
 	}
 
-	resp, err := h.service.CreateShortLink(c.Request.Context(), req)
+	userPlan := ""
+	if plan, exists := c.Get("user_plan"); exists {
+		userPlan = plan.(string)
+	}
+
+	resp, err := h.service.CreateShortLink(c.Request.Context(), req, userPlan)
 	if err != nil {
+		if errors.Is(err, subscription.ErrPremiumRequired) {
+			utils.Error(c, http.StatusForbidden, err.Error())
+			return
+		}
 		utils.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -212,10 +222,19 @@ func (h *Handler) UpdateShortLink(c *gin.Context) {
 		return
 	}
 
-	err := h.service.UpdateShortLink(c.Request.Context(), code, req, userID.(int64))
+	userPlan := ""
+	if plan, exists := c.Get("user_plan"); exists {
+		userPlan = plan.(string)
+	}
+
+	err := h.service.UpdateShortLink(c.Request.Context(), code, req, userID.(int64), userPlan)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			utils.Error(c, http.StatusNotFound, "short link not found or unauthorized")
+			return
+		}
+		if errors.Is(err, subscription.ErrPremiumRequired) {
+			utils.Error(c, http.StatusForbidden, err.Error())
 			return
 		}
 		utils.Error(c, http.StatusInternalServerError, "failed to update short link")
@@ -299,10 +318,19 @@ func (h *Handler) GetQRCode(c *gin.Context) {
 		return
 	}
 
-	qrCode, err := h.service.GetQRCode(c.Request.Context(), code)
+	userPlan := ""
+	if plan, exists := c.Get("user_plan"); exists {
+		userPlan = plan.(string)
+	}
+
+	qrCode, err := h.service.GetQRCode(c.Request.Context(), code, userPlan)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			utils.Error(c, http.StatusNotFound, "short link not found")
+			return
+		}
+		if errors.Is(err, subscription.ErrPremiumRequired) {
+			utils.Error(c, http.StatusForbidden, err.Error())
 			return
 		}
 		utils.Error(c, http.StatusInternalServerError, "failed to retrieve qr code")
