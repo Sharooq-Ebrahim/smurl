@@ -8,9 +8,11 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var ErrNotFound = errors.New("short link not found")
+var ErrExpired = errors.New("this link has expired")
 
 var reservedShortCodes = map[string]bool{
 	"login":    true,
@@ -25,6 +27,7 @@ var customShortCodeRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
 type Service interface {
 	CreateShortLink(ctx context.Context, req CreateShortLinkRequest) (*CreateShortLinkResponse, error)
 	GetShortLink(ctx context.Context, shortCode string) (*ShortLink, error)
+	GetShortLinkForRedirect(ctx context.Context, shortCode string) (*ShortLink, error)
 	GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, error)
 	UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error
 	UpdateShortLinkStatus(ctx context.Context, shortCode string, isActive bool, userID int64) error
@@ -75,10 +78,19 @@ func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkReques
 		}
 	}
 
+	if req.ExpiresAt != nil {
+		utcTime := req.ExpiresAt.UTC()
+		if utcTime.Before(time.Now().UTC()) {
+			return nil, errors.New("expiration time cannot be in the past")
+		}
+		req.ExpiresAt = &utcTime
+	}
+
 	link := &ShortLink{
 		UserID:      req.UserID,
 		ShortCode:   shortCode,
 		OriginalURL: req.OriginalURL,
+		ExpiresAt:   req.ExpiresAt,
 	}
 
 	if err := s.repo.Create(ctx, link); err != nil {
@@ -90,6 +102,7 @@ func (s *service) CreateShortLink(ctx context.Context, req CreateShortLinkReques
 		OriginalURL: link.OriginalURL,
 		ShortURL:    s.baseURL + "/" + link.ShortCode,
 		IsActive:    link.IsActive,
+		ExpiresAt:   link.ExpiresAt,
 	}, nil
 }
 
@@ -101,6 +114,22 @@ func (s *service) GetShortLink(ctx context.Context, shortCode string) (*ShortLin
 	}
 	if link == nil {
 		return nil, ErrNotFound
+	}
+
+	return link, nil
+}
+
+func (s *service) GetShortLinkForRedirect(ctx context.Context, shortCode string) (*ShortLink, error) {
+	link, err := s.repo.GetByShortCode(ctx, shortCode)
+	if err != nil {
+		return nil, err
+	}
+	if link == nil {
+		return nil, ErrNotFound
+	}
+
+	if link.ExpiresAt != nil && link.ExpiresAt.Before(time.Now().UTC()) {
+		return link, ErrExpired
 	}
 
 	return link, nil
@@ -129,6 +158,14 @@ func (s *service) GetAllURLs(ctx context.Context, userID int64) ([]*ShortLink, e
 }
 
 func (s *service) UpdateShortLink(ctx context.Context, shortCode string, req UpdateShortLinkRequest, userID int64) error {
+	if req.ExpiresAt != nil {
+		utcTime := req.ExpiresAt.UTC()
+		if utcTime.Before(time.Now().UTC()) {
+			return errors.New("expiration time cannot be in the past")
+		}
+		req.ExpiresAt = &utcTime
+	}
+
 	err := s.repo.Update(ctx, shortCode, req, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound

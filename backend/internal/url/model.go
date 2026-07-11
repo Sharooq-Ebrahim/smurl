@@ -15,16 +15,18 @@ type ShortLink struct {
 }
 
 type CreateShortLinkRequest struct {
-	UserID          int64  `json:"user_id"`
-	OriginalURL     string `json:"original_url"`
-	CustomShortCode string `json:"custom_short_code"`
+	UserID          int64      `json:"user_id"`
+	OriginalURL     string     `json:"original_url"`
+	CustomShortCode string     `json:"custom_short_code"`
+	ExpiresAt       *time.Time `json:"expires_at,omitempty"`
 }
 
 type CreateShortLinkResponse struct {
-	ShortCode   string `json:"short_code"`
-	OriginalURL string `json:"original_url"`
-	ShortURL    string `json:"short_url"`
-	IsActive    bool   `json:"is_active"`
+	ShortCode   string     `json:"short_code"`
+	OriginalURL string     `json:"original_url"`
+	ShortURL    string     `json:"short_url"`
+	IsActive    bool       `json:"is_active"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
 type CachedLink struct {
@@ -35,8 +37,9 @@ type CachedLink struct {
 }
 
 type UpdateShortLinkRequest struct {
-	OriginalURL string `json:"original_url"`
-	IsActive    *bool  `json:"is_active,omitempty"`
+	OriginalURL string     `json:"original_url"`
+	IsActive    *bool      `json:"is_active,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at"`
 }
 
 type UpdateShortLinkStatusRequest struct {

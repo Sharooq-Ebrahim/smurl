@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"smurl/internal/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,20 +29,18 @@ func (r *RateLimiter) Middleware() gin.HandlerFunc {
 
 		count, err := r.rdb.Incr(ctx, key).Result()
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "rate limiter unavailable",
-			})
+			utils.Error(c, http.StatusInternalServerError, "rate limiter unavailable")
+			c.Abort()
 			return
 		}
 
 		if count == 1 {
-			r.rdb.Expire(ctx, key, 5*time.Second)
+			r.rdb.Expire(ctx, key, 30*time.Second)
 		}
 
 		if count > 5 {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "too many requests",
-			})
+			utils.Error(c, http.StatusTooManyRequests, "too many requests")
+			c.Abort()
 			return
 		}
 

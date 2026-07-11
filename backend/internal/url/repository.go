@@ -116,17 +116,17 @@ func (r *repository) Update(ctx context.Context, shortCode string, req UpdateSho
 	if req.IsActive != nil {
 		query = `
 			UPDATE short_links
-			SET original_url = $1, is_active = $2, updated_at = NOW()
-			WHERE short_code = $3 AND user_id = $4 AND deleted_at IS NULL
+			SET original_url = $1, is_active = $2, expires_at = $3, updated_at = NOW()
+			WHERE short_code = $4 AND user_id = $5 AND deleted_at IS NULL
 		`
-		args = []interface{}{req.OriginalURL, *req.IsActive, shortCode, userID}
+		args = []interface{}{req.OriginalURL, *req.IsActive, req.ExpiresAt, shortCode, userID}
 	} else {
 		query = `
 			UPDATE short_links
-			SET original_url = $1, updated_at = NOW()
-			WHERE short_code = $2 AND user_id = $3 AND deleted_at IS NULL
+			SET original_url = $1, expires_at = $2, updated_at = NOW()
+			WHERE short_code = $3 AND user_id = $4 AND deleted_at IS NULL
 		`
-		args = []interface{}{req.OriginalURL, shortCode, userID}
+		args = []interface{}{req.OriginalURL, req.ExpiresAt, shortCode, userID}
 	}
 
 	res, err := r.db.ExecContext(ctx, query, args...)

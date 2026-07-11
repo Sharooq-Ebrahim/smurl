@@ -27,6 +27,9 @@ type Handler struct {
 //go:embed templates/disabled.html
 var disabledURLHTML []byte
 
+//go:embed templates/expired.html
+var expiredURLHTML []byte
+
 func NewHandler(service Service, redis *redis.Client, producer *kafka.Writer) *Handler {
 	return &Handler{service: service, redis: redis, kafkaProducer: producer}
 }
@@ -111,10 +114,14 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		return
 	}
 
-	link, err := h.service.GetShortLink(ctx, code)
+	link, err := h.service.GetShortLinkForRedirect(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			utils.Error(c, http.StatusNotFound, "short link not found")
+			return
+		}
+		if errors.Is(err, ErrExpired) {
+			utils.RenderHTML(c, http.StatusGone, expiredURLHTML)
 			return
 		}
 		utils.Error(c, http.StatusInternalServerError, "failed to retrieve original url")
@@ -134,7 +141,15 @@ func (h *Handler) RedirectURL(c *gin.Context) {
 		log.Printf("Failed to marshal cache data: %v", err)
 	}
 
-	if err = h.redis.Set(ctx, key, cacheJSON, 0).Err(); err != nil {
+	var cacheTTL time.Duration
+	if link.ExpiresAt != nil {
+		cacheTTL = time.Until(*link.ExpiresAt)
+		if cacheTTL <= 0 {
+			cacheTTL = 1 * time.Millisecond
+		}
+	}
+
+	if err = h.redis.Set(ctx, key, cacheJSON, cacheTTL).Err(); err != nil {
 		log.Printf("Failed to set cache for %s: %v", key, err)
 	}
 
