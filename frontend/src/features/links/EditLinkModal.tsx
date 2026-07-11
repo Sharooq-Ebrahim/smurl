@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/Button";
 import { useUpdateLink } from "./useLinks";
 import { toast } from "@/store/toastStore";
@@ -12,6 +13,7 @@ import type { ShortLink } from "@/types";
 
 const schema = z.object({
   original_url: z.string().url("Enter a valid URL (include https://)"),
+  expires_at: z.string().optional().or(z.literal("")),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -25,24 +27,44 @@ interface Props {
 export function EditLinkModal({ open, onClose, link }: Props) {
   const updateMutation = useUpdateLink();
 
+  const formatDateForInput = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset,
     setError,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { original_url: link.original_url },
+    defaultValues: { 
+      original_url: link.original_url,
+      expires_at: link.expires_at || "",
+    },
   });
 
   useEffect(() => {
-    reset({ original_url: link.original_url });
+    reset({ 
+      original_url: link.original_url,
+      expires_at: link.expires_at || "",
+    });
   }, [link, reset]);
 
   const onSubmit = (data: FormData) => {
     updateMutation.mutate(
-      { code: link.short_code, data: { original_url: data.original_url } },
+      { 
+        code: link.short_code, 
+        data: { 
+          original_url: data.original_url,
+          expires_at: data.expires_at ? new Date(data.expires_at).toISOString() : null,
+        } 
+      },
       {
         onSuccess: () => {
           toast.success("Link updated successfully");
@@ -70,6 +92,20 @@ export function EditLinkModal({ open, onClose, link }: Props) {
           placeholder="https://example.com/new-destination"
           error={errors.original_url?.message}
           {...register("original_url")}
+        />
+        <Controller
+          control={control}
+          name="expires_at"
+          render={({ field }) => (
+            <DatePicker
+              label="Expiration date"
+              hint="Leave empty for no expiration"
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.expires_at?.message}
+              disablePastDates={true}
+            />
+          )}
         />
 
         {errors.root && (

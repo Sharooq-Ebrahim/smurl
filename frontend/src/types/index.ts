@@ -41,6 +41,7 @@ export interface CreateShortLinkResponse {
 
 export interface UpdateShortLinkRequest {
   original_url: string
+  expires_at?: string | null
 }
 
 export interface URLStats {

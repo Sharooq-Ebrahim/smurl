@@ -37,6 +37,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               error &&
                 "border-red-400 focus:border-red-500 focus:ring-red-500/10",
               isPassword && "pr-10", // space for eye icon
+              props.type === "datetime-local" && "py-1.5",
               className,
             )}
             autoComplete="off"

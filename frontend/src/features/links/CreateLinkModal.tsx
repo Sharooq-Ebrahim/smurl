@@ -1,8 +1,9 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/Button";
 import { useCreateLink } from "./useLinks";
 import { toast } from "@/store/toastStore";
@@ -32,6 +33,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset,
@@ -43,7 +45,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
       {
         original_url: data.original_url,
         custom_short_code: data.custom_short_code || undefined,
-        expires_at: data.expires_at || undefined,
+        expires_at: data.expires_at ? new Date(data.expires_at).toISOString() : undefined,
       },
       {
         onSuccess: () => {
@@ -80,13 +82,20 @@ export function CreateLinkModal({ open, onClose }: Props) {
           error={errors.custom_short_code?.message}
           {...register("custom_short_code")}
         />
-        {/* <Input
- label="Expiration date"
- type="datetime-local"
- hint="Leave empty for no expiration"
- error={errors.expires_at?.message}
- {...register('expires_at')}
- /> */}
+        <Controller
+          control={control}
+          name="expires_at"
+          render={({ field }) => (
+            <DatePicker
+              label="Expiration date"
+              hint="Leave empty for no expiration"
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.expires_at?.message}
+              disablePastDates={true}
+            />
+          )}
+        />
 
         {errors.root && (
           <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/40 dark:text-red-400 px-3 py-2 rounded-lg">
