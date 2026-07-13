@@ -1,0 +1,22 @@
+# Version control
+.git
+.gitignore
+
+# Go specific
+bin/
+obj/
+*.test
+*.prof
+
+# Dependencies
+vendor/
+
+# Environment
+.env
+
+# Editor and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
